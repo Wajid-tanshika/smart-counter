@@ -1,0 +1,6 @@
+{
+  "name": "Smart Counter",
+  "description": "A smart counter with haptic feedback, fast decrement on long-press, reset, and sleek modern design.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

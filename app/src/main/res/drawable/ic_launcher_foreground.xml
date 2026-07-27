@@ -1,0 +1,47 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    
+    <!-- Outer concentric circular ripple representing smart haptic waves (36% opacity) -->
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.5"
+        android:strokeAlpha="0.12"
+        android:pathData="M 54, 54 m -42, 0 a 42,42 0 1,1 84,0 a 42,42 0 1,1 -84,0" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2.0"
+        android:strokeAlpha="0.22"
+        android:pathData="M 54, 54 m -32, 0 a 32,32 0 1,1 64,0 a 32,32 0 1,1 -64,0" />
+
+    <!-- Highly polished main click-counter emblem in the center -->
+    <!-- Tally counter top push button -->
+    <path
+        android:fillColor="#60A5FA"
+        android:pathData="M 44,22 L 64,22 A 3,3 0 0,1 67,25 L 67,31 L 41,31 L 41,25 A 3,3 0 0,1 44,22 Z" />
+        
+    <!-- Tally counter main body frame -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M 32,31 L 76,31 A 12,12 0 0,1 88,43 L 88,71 A 12,12 0 0,1 76,83 L 32,83 A 12,12 0 0,1 20,71 L 20,43 A 12,12 0 0,1 32,31 Z" />
+
+    <!-- Display Window inside the tally counter (Slate 900 colored) -->
+    <path
+        android:fillColor="#0F172A"
+        android:pathData="M 28,45 L 80,45 A 4,4 0 0,1 84,49 L 84,65 A 4,4 0 0,1 80,69 L 28,69 A 4,4 0 0,1 24,65 L 24,49 A 4,4 0 0,1 28,45 Z" />
+
+    <!-- Custom Stylized "+1" Tally Text inside the window -->
+    <!-- Draw the "+" sign -->
+    <path
+        android:fillColor="#60A5FA"
+        android:pathData="M 40,53 L 44,53 L 44,49 L 46,49 L 46,53 L 50,53 L 50,55 L 46,55 L 46,59 L 44,59 L 44,55 L 40,55 Z" />
+    
+    <!-- Draw the "1" digit with modern serif details -->
+    <path
+        android:fillColor="#60A5FA"
+        android:pathData="M 58,51 L 62,51 L 62,63 L 64,63 L 64,65 L 56,65 L 56,63 L 58,63 Z M 58,51 L 56,53 L 56,51 Z" />
+</vector>

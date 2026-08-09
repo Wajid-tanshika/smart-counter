@@ -1,9 +1,9 @@
 package com.example.ui
+import androidx.compose.ui.viewinterop.AndroidView
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdView
 import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.MobileAds
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -872,6 +872,24 @@ fun Modifier.repeatingClickable(
         onClick = {
             if (!wasRepeating) {
                 currentClickListener()
+            }
+        }
+    )
+}
+@Composable
+fun BannerAd(
+    adUnitId: String,
+    modifier: Modifier = Modifier
+) {
+    AndroidView(
+        modifier = modifier
+            .fillMaxWidth()
+            .wrapContentHeight(),
+        factory = { context ->
+            AdView(context).apply {
+                setAdSize(AdSize.BANNER)
+                this.adUnitId = adUnitId
+                loadAd(AdRequest.Builder().build())
             }
         }
     )

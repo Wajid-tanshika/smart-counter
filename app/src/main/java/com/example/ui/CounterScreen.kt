@@ -1,7 +1,9 @@
 package com.example.ui
 import com.google.android.gms.ads.AdRequest
 import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.AdSize
 import com.google.android.gms.ads.MobileAds
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -420,7 +422,7 @@ fun CounterScreen(
                                 shape = RoundedCornerShape(32.dp)
                             )
                             .border(1.dp, colors.glassBorderColor, RoundedCornerShape(32.dp))
-                            .clickable(enabled = !isLocked && count < 9999999) {
+                            .clickable(enabled = !isLocked && count < ) {
                                 viewModel.increment()
                                 playFeedback(true)
                                 speakCurrentNumber(viewModel.count.value)
@@ -492,7 +494,11 @@ fun CounterScreen(
                         }
                     }
 
-                    Spacer(modifier = Modifier.height(16.dp))
+                    BannerAd(
+    adUnitId = "ca-app-pub-1859648502281028/8764134185"
+)
+
+Spacer(modifier = Modifier.height(16.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),

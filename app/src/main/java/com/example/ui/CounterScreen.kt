@@ -422,7 +422,7 @@ fun CounterScreen(
                                 shape = RoundedCornerShape(32.dp)
                             )
                             .border(1.dp, colors.glassBorderColor, RoundedCornerShape(32.dp))
-                            .clickable(enabled = !isLocked && count < ) {
+                            .clickable(enabled = !isLocked && count < 9999999) {
                                 viewModel.increment()
                                 playFeedback(true)
                                 speakCurrentNumber(viewModel.count.value)

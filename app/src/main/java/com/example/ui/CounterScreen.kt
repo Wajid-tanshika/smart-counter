@@ -1,5 +1,7 @@
 package com.example.ui
-
+import com.google.android.gms.ads.AdRequest
+import com.google.android.gms.ads.AdView
+import com.google.android.gms.ads.MobileAds
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -114,6 +116,9 @@ fun CounterScreen(
     val colors = getAppThemeColors(themeChoice, count)
 
     val context = LocalContext.current
+    LaunchedEffect(Unit) {
+    MobileAds.initialize(context)
+    }
     val view = LocalView.current
     val haptic = LocalHapticFeedback.current
     

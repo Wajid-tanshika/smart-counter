@@ -1,69 +1,54 @@
 package com.example.ui
 
+import android.content.Context
+import android.content.Intent
+import android.media.AudioManager
+import android.media.ToneGenerator
+import android.os.Build
+import android.speech.tts.TextToSpeech
 import androidx.compose.animation.*
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
-import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Notifications
-import androidx.compose.material.icons.filled.NotificationsOff
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Remove
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.LightMode
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.Share
-import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material.icons.filled.LockOpen
-import android.content.Intent
-import androidx.compose.ui.composed
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import android.content.Context
-import android.os.Build
-import android.speech.tts.TextToSpeech
-import android.view.SoundEffectConstants
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.GoalEntity
 import kotlinx.coroutines.delay
-
-import android.media.AudioAttributes
-import android.media.AudioFormat
-import android.media.AudioManager
-import android.media.ToneGenerator
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 object AudioSynth {
     private var toneGenerator: ToneGenerator? = null
@@ -78,33 +63,341 @@ object AudioSynth {
     fun playTone(frequency: Double, durationMs: Int) {
         try {
             if (frequency > 500) {
-                // Increment tone
                 toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, durationMs)
             } else if (frequency < 500) {
-                // Decrement tone
                 toneGenerator?.startTone(ToneGenerator.TONE_CDMA_SOFT_ERROR_LITE, durationMs)
             } else {
-                // Other tone
                 toneGenerator?.startTone(ToneGenerator.TONE_PROP_PROMPT, durationMs)
             }
         } catch (e: Exception) {
-            // Ignore
         }
     }
 }
 
-
-
 @OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun CounterScreen(
+    counterViewModel: CounterViewModel,
+    goalsViewModel: GoalsViewModel,
+    onNavigateToGoals: () -> Unit = {},
+    initialGoalPage: Int = 0,
+    modifier: Modifier = Modifier
+) {
+    val allGoals by goalsViewModel.allGoals.collectAsStateWithLifecycle()
+    val themeChoice by counterViewModel.theme.collectAsStateWithLifecycle()
+    val count by counterViewModel.count.collectAsStateWithLifecycle()
+    val colors = getAppThemeColors(themeChoice, count)
+
+    val coroutineScope = rememberCoroutineScope()
+    val pagerState = rememberPagerState(
+        initialPage = initialGoalPage.coerceIn(0, allGoals.size),
+        pageCount = { 1 + allGoals.size }
+    )
+
+    LaunchedEffect(initialGoalPage) {
+        if (initialGoalPage in 0..allGoals.size && pagerState.currentPage != initialGoalPage) {
+            pagerState.scrollToPage(initialGoalPage)
+        }
+    }
+
+    var showAddGoalDialog by remember { mutableStateOf(false) }
+    var editingGoal by remember { mutableStateOf<GoalEntity?>(null) }
+
+    val gradientBackground = Brush.verticalGradient(
+        colors = colors.backgroundGradient
+    )
+
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        containerColor = Color.Transparent
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(gradientBackground)
+                .padding(innerPadding)
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Horizontal Swipeable Carousel Tabs Row
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Smart Counter Tab (Page 0)
+                    val isMainActive = pagerState.currentPage == 0
+                    Surface(
+                        onClick = {
+                            coroutineScope.launch { pagerState.animateScrollToPage(0) }
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        color = if (isMainActive) colors.headerAccentColor.copy(alpha = 0.22f) else colors.glassBackgroundColor,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isMainActive) colors.headerAccentColor else colors.glassBorderColor
+                        ),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 12.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Speed,
+                                contentDescription = null,
+                                tint = if (isMainActive) colors.headerAccentColor else colors.secondaryTextColor,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Smart Counter",
+                                fontSize = 12.sp,
+                                fontWeight = if (isMainActive) FontWeight.Bold else FontWeight.Medium,
+                                color = if (isMainActive) colors.headerAccentColor else colors.primaryTextColor
+                            )
+                        }
+                    }
+
+                    // Goal Tabs (Page 1..N)
+                    allGoals.forEachIndexed { index, goal ->
+                        val pageIndex = index + 1
+                        val isGoalActive = pagerState.currentPage == pageIndex
+                        val goalColor = parseColorSafe(goal.colorHex, colors.headerAccentColor)
+
+                        Surface(
+                            onClick = {
+                                coroutineScope.launch { pagerState.animateScrollToPage(pageIndex) }
+                            },
+                            shape = RoundedCornerShape(16.dp),
+                            color = if (isGoalActive) goalColor.copy(alpha = 0.22f) else colors.glassBackgroundColor,
+                            border = BorderStroke(
+                                1.dp,
+                                if (isGoalActive) goalColor else colors.glassBorderColor
+                            ),
+                            modifier = Modifier.height(34.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = getGoalIcon(goal.iconName),
+                                    contentDescription = null,
+                                    tint = if (isGoalActive) goalColor else colors.secondaryTextColor,
+                                    modifier = Modifier.size(14.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "${goal.name} (${goal.currentCount}/${goal.targetCount})",
+                                    fontSize = 12.sp,
+                                    fontWeight = if (isGoalActive) FontWeight.Bold else FontWeight.Medium,
+                                    color = if (isGoalActive) goalColor else colors.primaryTextColor,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                    }
+
+                    // Quick "+ Add Goal" Button
+                    Surface(
+                        onClick = { showAddGoalDialog = true },
+                        shape = RoundedCornerShape(16.dp),
+                        color = colors.glassBackgroundColor,
+                        border = BorderStroke(1.dp, colors.headerAccentColor.copy(alpha = 0.4f)),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add Goal",
+                                tint = colors.headerAccentColor,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "Add Goal",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.headerAccentColor
+                            )
+                        }
+                    }
+
+                    // "All Goals" Dashboard Button
+                    Surface(
+                        onClick = {
+                            goalsViewModel.resetSelectedState()
+                            onNavigateToGoals()
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        color = colors.glassBackgroundColor,
+                        border = BorderStroke(1.dp, colors.glassBorderColor),
+                        modifier = Modifier.height(34.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(horizontal = 10.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Flag,
+                                contentDescription = "All Goals",
+                                tint = colors.headerAccentColor,
+                                modifier = Modifier.size(14.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text(
+                                text = "All Goals (${allGoals.size})",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = colors.primaryTextColor
+                            )
+                        }
+                    }
+                }
+
+                // Horizontal Pager for Smooth Swipe Navigation
+                HorizontalPager(
+                    state = pagerState,
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth()
+                ) { page ->
+                    if (page == 0) {
+                        // Main Smart Counter Page
+                        MainSmartCounterPage(
+                            viewModel = counterViewModel,
+                            onNavigateToGoals = {
+                                goalsViewModel.resetSelectedState()
+                                onNavigateToGoals()
+                            },
+                            onAddGoal = { showAddGoalDialog = true },
+                            hasGoals = allGoals.isNotEmpty()
+                        )
+                    } else {
+                        // Individual Goal Counter Page
+                        val goalIndex = page - 1
+                        if (goalIndex in allGoals.indices) {
+                            val goal = allGoals[goalIndex]
+                            GoalCounterPage(
+                                goal = goal,
+                                goalsViewModel = goalsViewModel,
+                                counterViewModel = counterViewModel,
+                                onNavigateToGoals = {
+                                    goalsViewModel.resetSelectedState()
+                                    onNavigateToGoals()
+                                },
+                                onOpenEdit = { editingGoal = it },
+                                onOpenHistory = {
+                                    goalsViewModel.selectGoalForHistory(it)
+                                    onNavigateToGoals()
+                                }
+                            )
+                        }
+                    }
+                }
+
+                // Bottom Page Indicator Dots
+                if (allGoals.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        horizontalArrangement = Arrangement.Center,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        val totalPages = 1 + allGoals.size
+                        for (i in 0 until totalPages) {
+                            val isSelected = pagerState.currentPage == i
+                            Box(
+                                modifier = Modifier
+                                    .padding(horizontal = 4.dp)
+                                    .size(if (isSelected) 8.dp else 6.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isSelected) colors.headerAccentColor else colors.secondaryTextColor.copy(alpha = 0.3f)
+                                    )
+                                    .clickable {
+                                        coroutineScope.launch { pagerState.animateScrollToPage(i) }
+                                    }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Add Goal Dialog
+    if (showAddGoalDialog) {
+        GoalEditorDialog(
+            goalToEdit = null,
+            colors = colors,
+            onDismiss = { showAddGoalDialog = false },
+            onSave = { name, target, starting, unit, icon, colorHex, isDaily ->
+                goalsViewModel.addGoal(
+                    name = name,
+                    targetCount = target,
+                    startingCount = starting,
+                    unit = unit,
+                    iconName = icon,
+                    colorHex = colorHex,
+                    isDaily = isDaily
+                )
+                showAddGoalDialog = false
+                // Auto scroll to the newly created goal (last page)
+                coroutineScope.launch {
+                    delay(200)
+                    pagerState.animateScrollToPage(allGoals.size + 1)
+                }
+            }
+        )
+    }
+
+    // Edit Goal Dialog
+    if (editingGoal != null) {
+        GoalEditorDialog(
+            goalToEdit = editingGoal,
+            colors = colors,
+            onDismiss = { editingGoal = null },
+            onSave = { name, target, starting, unit, icon, colorHex, isDaily ->
+                editingGoal?.let { current ->
+                    goalsViewModel.updateGoal(
+                        id = current.id,
+                        name = name,
+                        targetCount = target,
+                        unit = unit,
+                        iconName = icon,
+                        colorHex = colorHex,
+                        isDaily = isDaily
+                    )
+                }
+                editingGoal = null
+            }
+        )
+    }
+}
+
+@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun MainSmartCounterPage(
     viewModel: CounterViewModel,
+    onNavigateToGoals: () -> Unit = {},
+    onAddGoal: () -> Unit = {},
+    hasGoals: Boolean = false,
     modifier: Modifier = Modifier
 ) {
     val count by viewModel.count.collectAsStateWithLifecycle()
     val history by viewModel.history.collectAsStateWithLifecycle()
     val themeChoice by viewModel.theme.collectAsStateWithLifecycle()
-    
     val highestCount by viewModel.highestCount.collectAsStateWithLifecycle()
     val lowestCount by viewModel.lowestCount.collectAsStateWithLifecycle()
     val totalTaps by viewModel.totalTaps.collectAsStateWithLifecycle()
@@ -114,13 +407,12 @@ fun CounterScreen(
     val colors = getAppThemeColors(themeChoice, count)
 
     val context = LocalContext.current
-    val view = LocalView.current
     val haptic = LocalHapticFeedback.current
-    
+
     var vibrationEnabled by remember { mutableStateOf(true) }
     var soundEnabled by remember { mutableStateOf(true) }
     var voiceEnabled by remember { mutableStateOf(false) }
-    
+
     val tts = remember {
         var instance: TextToSpeech? = null
         val ttsContext = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -135,7 +427,7 @@ fun CounterScreen(
         }
         instance
     }
-    
+
     DisposableEffect(Unit) {
         onDispose {
             tts?.stop()
@@ -144,11 +436,10 @@ fun CounterScreen(
     }
 
     val lastHapticTime = remember { java.util.concurrent.atomic.AtomicLong(0L) }
-
     val playFeedback = { isIncrement: Boolean? ->
         val now = System.currentTimeMillis()
         val prev = lastHapticTime.get()
-        if (now - prev >= 100L) { // Rate limit feedback, reduced to 100ms for more responsiveness
+        if (now - prev >= 100L) {
             lastHapticTime.set(now)
             if (soundEnabled) {
                 if (isIncrement == true) {
@@ -173,7 +464,7 @@ fun CounterScreen(
             }
         }
     }
-    
+
     val lastSpeakTime = remember { java.util.concurrent.atomic.AtomicLong(0L) }
     val speakCurrentNumber = { number: Int ->
         if (voiceEnabled) {
@@ -192,467 +483,510 @@ fun CounterScreen(
     var targetInput by remember { mutableStateOf("") }
     var isLocked by remember { mutableStateOf(false) }
 
-    val gradientBackground = Brush.verticalGradient(
-        colors = colors.backgroundGradient
-    )
-
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = Color.Transparent
-    ) { innerPadding ->
-        Box(
+    Column(
+        modifier = modifier
+            .fillMaxSize()
+            .padding(horizontal = 24.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.SpaceBetween
+    ) {
+        // Header Area
+        Row(
             modifier = Modifier
-                .fillMaxSize()
-                .background(gradientBackground)
-                .padding(innerPadding)
+                .fillMaxWidth()
+                .padding(top = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.SpaceBetween
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                // Header Area
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 24.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text(
-                            text = "SMART",
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 2.sp,
-                            color = colors.headerAccentColor
-                        )
-                        Text(
-                            text = "Counter",
-                            fontSize = 24.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = colors.primaryTextColor
-                        )
-                    }
-
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        IconButton(
-                            onClick = {
-                                val sendIntent: Intent = Intent().apply {
-                                    action = Intent.ACTION_SEND
-                                    putExtra(Intent.EXTRA_TEXT, "🎯 I just reached ${count} (Target: ${if(targetCount > 0) targetCount else "None"}) with SMART Counter! Can you beat it?")
-                                    type = "text/plain"
-                                }
-                                val shareIntent = Intent.createChooser(sendIntent, "Share your count")
-                                context.startActivity(shareIntent)
-                            },
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = colors.iconContainerColor
-                            ),
-                            modifier = Modifier
-                                .size(44.dp)
-                                .border(
-                                    width = 1.dp,
-                                    color = colors.iconBorderColor,
-                                    shape = CircleShape
-                                )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Share,
-                                contentDescription = "Share Count",
-                                tint = colors.iconTintColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { isLocked = !isLocked },
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = colors.iconContainerColor
-                            ),
-                            modifier = Modifier
-                                .size(44.dp)
-                                .border(
-                                    width = 1.dp,
-                                    color = colors.iconBorderColor,
-                                    shape = CircleShape
-                                )
-                        ) {
-                            Icon(
-                                imageVector = if (isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
-                                contentDescription = "Lock Interface",
-                                tint = if (isLocked) colors.headerAccentColor else colors.iconTintColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { 
-                                val newTheme = if (themeChoice == AppTheme.LIGHT) AppTheme.DARK else AppTheme.LIGHT
-                                viewModel.setTheme(newTheme)
-                            },
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = colors.iconContainerColor
-                            ),
-                            modifier = Modifier
-                                .size(44.dp)
-                                .border(
-                                    width = 1.dp,
-                                    color = colors.iconBorderColor,
-                                    shape = CircleShape
-                                )
-                        ) {
-                            Icon(
-                                imageVector = if (themeChoice == AppTheme.LIGHT) Icons.Default.DarkMode else Icons.Default.LightMode,
-                                contentDescription = "Toggle Theme",
-                                tint = colors.iconTintColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-
-                        IconButton(
-                            onClick = { showHistorySheet = true },
-                            colors = IconButtonDefaults.iconButtonColors(
-                                containerColor = colors.iconContainerColor
-                            ),
-                            modifier = Modifier
-                                .size(44.dp)
-                                .border(
-                                    width = 1.dp,
-                                    color = colors.iconBorderColor,
-                                    shape = CircleShape
-                                )
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.History,
-                                contentDescription = "History",
-                                tint = colors.iconTintColor,
-                                modifier = Modifier.size(24.dp)
-                            )
-                        }
-
-                        Box {
-                            IconButton(
-                                onClick = { showSettingsMenu = true },
-                                colors = IconButtonDefaults.iconButtonColors(
-                                    containerColor = colors.iconContainerColor
-                                ),
-                                modifier = Modifier
-                                    .size(44.dp)
-                                    .border(
-                                        width = 1.dp,
-                                        color = colors.iconBorderColor,
-                                        shape = CircleShape
-                                    )
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Settings,
-                                    contentDescription = "Settings",
-                                    tint = colors.iconTintColor,
-                                    modifier = Modifier.size(24.dp)
-                                )
-                            }
-
-                            DropdownMenu(
-                                expanded = showSettingsMenu,
-                                onDismissRequest = { showSettingsMenu = false }
-                            ) {
-                                AppTheme.values().forEach { theme ->
-                                    DropdownMenuItem(
-                                        text = { Text(theme.name.replace("_", " ")) },
-                                        onClick = {
-                                            viewModel.setTheme(theme)
-                                            showSettingsMenu = false
-                                        },
-                                        trailingIcon = {
-                                            if (themeChoice == theme) Icon(Icons.Default.Check, "Selected")
-                                        }
-                                    )
-                                }
-                                HorizontalDivider()
-                                DropdownMenuItem(
-                                    text = { Text("Set Target Counter") },
-                                    onClick = { targetInput = targetCount.toString(); showTargetDialog = true; showSettingsMenu = false }
-                                )
-                                HorizontalDivider()
-                                DropdownMenuItem(
-                                    text = { Text(if (soundEnabled) "Disable Sounds" else "Enable Sounds") },
-                                    onClick = { soundEnabled = !soundEnabled; showSettingsMenu = false }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(if (voiceEnabled) "Disable Voice" else "Enable Voice") },
-                                    onClick = { voiceEnabled = !voiceEnabled; showSettingsMenu = false }
-                                )
-                                DropdownMenuItem(
-                                    text = { Text(if (vibrationEnabled) "Disable Vibration" else "Enable Vibration") },
-                                    onClick = { vibrationEnabled = !vibrationEnabled; showSettingsMenu = false }
-                                )
-                            }
-                        }
-                    }
+                Column {
+                    Text(
+                        text = "SMART",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp,
+                        color = colors.headerAccentColor
+                    )
+                    Text(
+                        text = "Counter",
+                        fontSize = 24.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = colors.primaryTextColor
+                    )
                 }
 
-                // Center Display
-                Column(
+                FilledTonalButton(
+                    onClick = onNavigateToGoals,
+                    colors = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = colors.headerAccentColor.copy(alpha = 0.18f),
+                        contentColor = colors.headerAccentColor
+                    ),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(1.dp, colors.headerAccentColor.copy(alpha = 0.4f)),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 4.dp),
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center
+                        .height(36.dp)
+                        .testTag("goals_nav_button")
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.85f)
-                            .aspectRatio(1f)
-                            .shadow(24.dp, shape = RoundedCornerShape(32.dp), ambientColor = colors.headerAccentColor, spotColor = colors.incrementShadow)
-                            .background(
-                                color = colors.glassBackgroundColor,
-                                shape = RoundedCornerShape(32.dp)
-                            )
-                            .border(1.dp, colors.glassBorderColor, RoundedCornerShape(32.dp))
-                            .clickable(enabled = !isLocked && count < 9999999) {
-                                viewModel.increment()
-                                playFeedback(true)
-                                speakCurrentNumber(viewModel.count.value)
-                            },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Column(
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            AnimatedContent(
-                                targetState = count,
-                                transitionSpec = {
-                                    if (targetState > initialState) {
-                                        (slideInVertically { height -> height } + fadeIn() + scaleIn(initialScale = 0.5f)) togetherWith
-                                                (slideOutVertically { height -> -height } + fadeOut() + scaleOut(targetScale = 1.5f))
-                                    } else {
-                                        (slideInVertically { height -> -height } + fadeIn() + scaleIn(initialScale = 1.5f)) togetherWith
-                                                (slideOutVertically { height -> height } + fadeOut() + scaleOut(targetScale = 0.5f))
-                                    }.using(
-                                        SizeTransform(clip = false)
-                                    )
-                                },
-                                label = "CounterValueAnimation"
-                            ) { displayedCount ->
-                                Text(
-                                    text = String.format("%01d", displayedCount),
-                                    fontSize = 120.sp,
-                                    fontWeight = FontWeight.Medium,
-                                    fontFamily = FontFamily.SansSerif,
-                                    letterSpacing = (-2).sp,
-                                    color = colors.countTextColor,
-                                    textAlign = TextAlign.Center,
-                                    modifier = Modifier.testTag("counter_display")
-                                )
-                            }
+                    Icon(
+                        imageVector = Icons.Default.Flag,
+                        contentDescription = "Goals",
+                        modifier = Modifier.size(15.dp)
+                    )
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = "Goals",
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
 
-                            Spacer(modifier = Modifier.height(8.dp))
-
-                            Text(
-                                text = "CURRENT COUNT",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                letterSpacing = 2.sp,
-                                color = colors.secondaryTextColor
-                            )
-
-                            if (targetCount > 0) {
-                                Spacer(modifier = Modifier.height(16.dp))
-                                val progress = (count.toFloat() / targetCount.toFloat()).coerceIn(0f, 1f)
-                                LinearProgressIndicator(
-                                    progress = { progress },
-                                    modifier = Modifier
-                                        .fillMaxWidth(0.6f)
-                                        .height(6.dp)
-                                        .background(colors.glassBackgroundColor, CircleShape)
-                                        .border(0.5.dp, colors.glassBorderColor, CircleShape),
-                                    color = if (count >= targetCount) colors.headerAccentColor else colors.countTextColor,
-                                    trackColor = Color.Transparent,
-                                    strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
-                                )
-                                Spacer(modifier = Modifier.height(4.dp))
-                                Text(
-                                    text = "Target: $targetCount",
-                                    fontSize = 10.sp,
-                                    color = colors.secondaryTextColor
-                                )
-                            }
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = {
+                        val sendIntent: Intent = Intent().apply {
+                            action = Intent.ACTION_SEND
+                            putExtra(Intent.EXTRA_TEXT, "🎯 I just reached $count (Target: ${if(targetCount > 0) targetCount else "None"}) with SMART Counter! Can you beat it?")
+                            type = "text/plain"
                         }
-                    }
-
-                    Spacer(modifier = Modifier.height(16.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = "STEP",
-                            fontSize = 10.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = colors.secondaryTextColor,
-                            modifier = Modifier.padding(end = 12.dp)
+                        val shareIntent = Intent.createChooser(sendIntent, "Share your count")
+                        context.startActivity(shareIntent)
+                    },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = colors.iconContainerColor
+                    ),
+                    modifier = Modifier
+                        .size(44.dp)
+                        .border(
+                            width = 1.dp,
+                            color = colors.iconBorderColor,
+                            shape = CircleShape
                         )
-                        listOf(1, 5, 10, 100).forEach { s ->
-                            Box(
-                                modifier = Modifier
-                                    .padding(horizontal = 4.dp)
-                                    .clickable(enabled = !isLocked) { viewModel.setStep(s) }
-                                    .background(
-                                        if (stepSize == s) colors.headerAccentColor.copy(alpha = 0.2f) else Color.Transparent,
-                                        CircleShape
-                                    )
-                                    .border(
-                                        1.dp,
-                                        if (stepSize == s) colors.headerAccentColor else colors.iconBorderColor,
-                                        CircleShape
-                                    )
-                                    .padding(horizontal = 12.dp, vertical = 6.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "+$s",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = if (stepSize == s) colors.headerAccentColor else colors.secondaryTextColor
-                                )
-                            }
-                        }
-                    }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Share,
+                        contentDescription = "Share Count",
+                        tint = colors.iconTintColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                IconButton(
+                    onClick = { isLocked = !isLocked },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = colors.iconContainerColor
+                    ),
+                    modifier = Modifier
+                        .size(44.dp)
+                        .border(
+                            width = 1.dp,
+                            color = colors.iconBorderColor,
+                            shape = CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (isLocked) Icons.Default.Lock else Icons.Default.LockOpen,
+                        contentDescription = "Lock Interface",
+                        tint = if (isLocked) colors.headerAccentColor else colors.iconTintColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
 
-                    Button(
-                        onClick = {
-                            if (!isLocked) {
-                                playFeedback(null)
-                                showResetDialog = true
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = colors.resetContainerColor,
-                            contentColor = colors.resetContentColor
+                IconButton(
+                    onClick = { 
+                        val newTheme = if (themeChoice == AppTheme.LIGHT) AppTheme.DARK else AppTheme.LIGHT
+                        viewModel.setTheme(newTheme)
+                    },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = colors.iconContainerColor
+                    ),
+                    modifier = Modifier
+                        .size(44.dp)
+                        .border(
+                            width = 1.dp,
+                            color = colors.iconBorderColor,
+                            shape = CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = if (themeChoice == AppTheme.LIGHT) Icons.Default.DarkMode else Icons.Default.LightMode,
+                        contentDescription = "Toggle Theme",
+                        tint = colors.iconTintColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                IconButton(
+                    onClick = { showHistorySheet = true },
+                    colors = IconButtonDefaults.iconButtonColors(
+                        containerColor = colors.iconContainerColor
+                    ),
+                    modifier = Modifier
+                        .size(44.dp)
+                        .border(
+                            width = 1.dp,
+                            color = colors.iconBorderColor,
+                            shape = CircleShape
+                        )
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.History,
+                        contentDescription = "History",
+                        tint = colors.iconTintColor,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                Box {
+                    IconButton(
+                        onClick = { showSettingsMenu = true },
+                        colors = IconButtonDefaults.iconButtonColors(
+                            containerColor = colors.iconContainerColor
                         ),
-                        shape = RoundedCornerShape(20.dp),
-                        border = BorderStroke(1.dp, colors.resetBorderColor),
                         modifier = Modifier
-                            .testTag("reset_button")
-                            .height(44.dp)
-                            .widthIn(min = 130.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Refresh,
-                            contentDescription = "Reset counter",
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "RESET",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            letterSpacing = 1.sp
-                        )
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(24.dp))
-
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 36.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    val minusInteractionSource = remember { MutableInteractionSource() }
-                    Box(
-                        modifier = Modifier
-                            .size(76.dp)
-                            .shadow(
-                                elevation = 12.dp,
-                                shape = CircleShape,
-                                ambientColor = if (count > 0) colors.decrementShadow else Color.Transparent,
-                                spotColor = if (count > 0) colors.decrementShadow else Color.Transparent
-                            )
-                            .background(
-                                brush = Brush.radialGradient(
-                                    colors = if (count > 0) colors.decrementGradientsActive else colors.decrementGradientsInactive
-                                ),
-                                shape = CircleShape
-                            )
+                            .size(44.dp)
                             .border(
-                                width = 2.dp,
-                                color = if (count > 0) colors.decrementShadow.copy(alpha=0.6f) else colors.secondaryTextColor.copy(alpha=0.3f),
+                                width = 1.dp,
+                                color = colors.iconBorderColor,
                                 shape = CircleShape
                             )
-                            .repeatingClickable(
-                                interactionSource = minusInteractionSource,
-                                enabled = !isLocked && count > 0,
-                                initialDelay = 500,
-                                interval = 100,
-                                onClick = {
-                                    if (count > 0) {
-                                        viewModel.decrement()
-                                        playFeedback(false)
-                                        speakCurrentNumber(viewModel.count.value)
-                                    }
-                                }
-                            )
-                            .testTag("decrement_button"),
-                        contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Remove,
-                            contentDescription = "Decrease counter by 1",
-                            tint = colors.negativeColor,
-                            modifier = Modifier.size(28.dp)
+                            imageVector = Icons.Default.Settings,
+                            contentDescription = "Settings",
+                            tint = colors.iconTintColor,
+                            modifier = Modifier.size(24.dp)
                         )
                     }
 
-                    val plusInteractionSource = remember { MutableInteractionSource() }
-                    Box(
-                        modifier = Modifier
-                            .size(88.dp)
-                            .shadow(16.dp, shape = CircleShape, ambientColor = colors.incrementShadow, spotColor = colors.incrementShadow)
-                            .background(
-                                brush = Brush.radialGradient(
-                                    colors = colors.incrementGradients
-                                ),
-                                shape = CircleShape
-                            )
-                            .border(1.dp, colors.incrementShadow, CircleShape)
-                            .repeatingClickable(
-                                interactionSource = plusInteractionSource,
-                                enabled = !isLocked && count < 9999999,
-                                initialDelay = 500,
-                                interval = 100,
+                    DropdownMenu(
+                        expanded = showSettingsMenu,
+                        onDismissRequest = { showSettingsMenu = false }
+                    ) {
+                        AppTheme.values().forEach { theme ->
+                            DropdownMenuItem(
+                                text = { Text(theme.name.replace("_", " ")) },
                                 onClick = {
-                                    viewModel.increment()
-                                    playFeedback(true)
-                                    speakCurrentNumber(viewModel.count.value)
+                                    viewModel.setTheme(theme)
+                                    showSettingsMenu = false
+                                },
+                                trailingIcon = {
+                                    if (themeChoice == theme) Icon(Icons.Default.Check, "Selected")
                                 }
                             )
-                            .testTag("increment_button"),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Add,
-                            contentDescription = "Increase counter by 1",
-                            tint = colors.positiveColor,
-                            modifier = Modifier.size(36.dp)
+                        }
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("Goals & Habits", fontWeight = FontWeight.Bold) },
+                            onClick = {
+                                showSettingsMenu = false
+                                onNavigateToGoals()
+                            },
+                            leadingIcon = {
+                                Icon(Icons.Default.Flag, contentDescription = null, tint = colors.headerAccentColor)
+                            }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text("Set Target Counter") },
+                            onClick = { targetInput = targetCount.toString(); showTargetDialog = true; showSettingsMenu = false }
+                        )
+                        HorizontalDivider()
+                        DropdownMenuItem(
+                            text = { Text(if (soundEnabled) "Disable Sounds" else "Enable Sounds") },
+                            onClick = { soundEnabled = !soundEnabled; showSettingsMenu = false }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (voiceEnabled) "Disable Voice" else "Enable Voice") },
+                            onClick = { voiceEnabled = !voiceEnabled; showSettingsMenu = false }
+                        )
+                        DropdownMenuItem(
+                            text = { Text(if (vibrationEnabled) "Disable Vibration" else "Enable Vibration") },
+                            onClick = { vibrationEnabled = !vibrationEnabled; showSettingsMenu = false }
                         )
                     }
                 }
             }
         }
+
+        // Center Display
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(0.85f)
+                    .aspectRatio(1f)
+                    .shadow(24.dp, shape = RoundedCornerShape(32.dp), ambientColor = colors.headerAccentColor, spotColor = colors.incrementShadow)
+                    .background(
+                        color = colors.glassBackgroundColor,
+                        shape = RoundedCornerShape(32.dp)
+                    )
+                    .border(1.dp, colors.glassBorderColor, RoundedCornerShape(32.dp))
+                    .clickable(enabled = !isLocked && count < 9999999) {
+                        viewModel.increment()
+                        playFeedback(true)
+                        speakCurrentNumber(viewModel.count.value)
+                    },
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    AnimatedContent(
+                        targetState = count,
+                        transitionSpec = {
+                            if (targetState > initialState) {
+                                (slideInVertically { height -> height } + fadeIn() + scaleIn(initialScale = 0.5f)) togetherWith
+                                        (slideOutVertically { height -> -height } + fadeOut() + scaleOut(targetScale = 1.5f))
+                            } else {
+                                (slideInVertically { height -> -height } + fadeIn() + scaleIn(initialScale = 1.5f)) togetherWith
+                                        (slideOutVertically { height -> height } + fadeOut() + scaleOut(targetScale = 0.5f))
+                            }.using(
+                                SizeTransform(clip = false)
+                            )
+                        },
+                        label = "CounterValueAnimation"
+                    ) { displayedCount ->
+                        Text(
+                            text = String.format("%01d", displayedCount),
+                            fontSize = 120.sp,
+                            fontWeight = FontWeight.Medium,
+                            fontFamily = FontFamily.SansSerif,
+                            letterSpacing = (-2).sp,
+                            color = colors.countTextColor,
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.testTag("counter_display")
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "CURRENT COUNT",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp,
+                        color = colors.secondaryTextColor
+                    )
+
+                    if (targetCount > 0) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        val progress = (count.toFloat() / targetCount.toFloat()).coerceIn(0f, 1f)
+                        LinearProgressIndicator(
+                            progress = { progress },
+                            modifier = Modifier
+                                .fillMaxWidth(0.6f)
+                                .height(6.dp)
+                                .background(colors.glassBackgroundColor, CircleShape)
+                                .border(0.5.dp, colors.glassBorderColor, CircleShape),
+                            color = if (count >= targetCount) colors.headerAccentColor else colors.countTextColor,
+                            trackColor = Color.Transparent,
+                            strokeCap = androidx.compose.ui.graphics.StrokeCap.Round
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Target: $targetCount",
+                            fontSize = 10.sp,
+                            color = colors.secondaryTextColor
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Step Selector Row
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "STEP",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = 1.5.sp,
+                    color = colors.secondaryTextColor,
+                    modifier = Modifier.padding(end = 12.dp)
+                )
+                listOf(1, 5, 10, 100).forEach { s ->
+                    val isSelected = stepSize == s
+                    Surface(
+                        onClick = {
+                            if (!isLocked) {
+                                viewModel.setStep(s)
+                                playFeedback(null)
+                            }
+                        },
+                        shape = RoundedCornerShape(14.dp),
+                        color = if (isSelected) colors.headerAccentColor else colors.glassBackgroundColor,
+                        border = BorderStroke(
+                            1.dp,
+                            if (isSelected) colors.headerAccentColor else colors.glassBorderColor
+                        ),
+                        shadowElevation = if (isSelected) 4.dp else 0.dp,
+                        modifier = Modifier
+                            .padding(horizontal = 4.dp)
+                            .height(38.dp)
+                    ) {
+                        Box(
+                            contentAlignment = Alignment.Center,
+                            modifier = Modifier.padding(horizontal = 14.dp)
+                        ) {
+                            Text(
+                                text = "+$s",
+                                fontSize = 13.sp,
+                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.SemiBold,
+                                color = if (isSelected) Color.White else colors.primaryTextColor
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(20.dp))
+
+            Button(
+                onClick = {
+                    if (!isLocked) {
+                        playFeedback(null)
+                        showResetDialog = true
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = colors.resetContainerColor,
+                    contentColor = colors.resetContentColor
+                ),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(1.dp, colors.resetBorderColor),
+                modifier = Modifier
+                    .testTag("reset_button")
+                    .height(44.dp)
+                    .widthIn(min = 140.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Refresh,
+                    contentDescription = "Reset counter",
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "RESET",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.2.sp
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 28.dp),
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            val minusInteractionSource = remember { MutableInteractionSource() }
+            Box(
+                modifier = Modifier
+                    .size(76.dp)
+                    .shadow(
+                        elevation = 12.dp,
+                        shape = CircleShape,
+                        ambientColor = if (count > 0) colors.decrementShadow else Color.Transparent,
+                        spotColor = if (count > 0) colors.decrementShadow else Color.Transparent
+                    )
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = if (count > 0) colors.decrementGradientsActive else colors.decrementGradientsInactive
+                        ),
+                        shape = CircleShape
+                    )
+                    .border(
+                        width = 2.dp,
+                        color = if (count > 0) colors.decrementShadow.copy(alpha=0.6f) else colors.secondaryTextColor.copy(alpha=0.3f),
+                        shape = CircleShape
+                    )
+                    .repeatingClickable(
+                        interactionSource = minusInteractionSource,
+                        enabled = !isLocked && count > 0,
+                        initialDelay = 500,
+                        interval = 100,
+                        onClick = {
+                            if (count > 0) {
+                                viewModel.decrement()
+                                playFeedback(false)
+                                speakCurrentNumber(viewModel.count.value)
+                            }
+                        }
+                    )
+                    .testTag("decrement_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Remove,
+                    contentDescription = "Decrease counter by 1",
+                    tint = colors.negativeColor,
+                    modifier = Modifier.size(28.dp)
+                )
+            }
+
+            val plusInteractionSource = remember { MutableInteractionSource() }
+            Box(
+                modifier = Modifier
+                    .size(88.dp)
+                    .shadow(16.dp, shape = CircleShape, ambientColor = colors.incrementShadow, spotColor = colors.incrementShadow)
+                    .background(
+                        brush = Brush.radialGradient(
+                            colors = colors.incrementGradients
+                        ),
+                        shape = CircleShape
+                    )
+                    .border(1.dp, colors.incrementShadow, CircleShape)
+                    .repeatingClickable(
+                        interactionSource = plusInteractionSource,
+                        enabled = !isLocked && count < 9999999,
+                        initialDelay = 500,
+                        interval = 100,
+                        onClick = {
+                            viewModel.increment()
+                            playFeedback(true)
+                            speakCurrentNumber(viewModel.count.value)
+                        }
+                    )
+                    .testTag("increment_button"),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Increase counter by 1",
+                    tint = colors.positiveColor,
+                    modifier = Modifier.size(36.dp)
+                )
+            }
+        }
+
+        // Clean non-intrusive Banner Ad at the bottom
+        com.example.ads.AdmobBanner(
+            modifier = Modifier.padding(bottom = 4.dp)
+        )
     }
 
     if (showResetDialog) {

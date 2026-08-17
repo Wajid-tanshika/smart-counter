@@ -4,101 +4,91 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Robot Head (Grey Metallic Dome) -->
+    <!-- Top Key Ring of Tally Counter -->
     <path
-        android:fillColor="#CBD5E1"
-        android:pathData="M 34,48 C 34,32 42,28 54,28 C 66,28 74,32 74,48 L 74,62 C 74,67 70,70 64,70 L 44,70 C 38,70 34,67 34,62 Z" />
+        android:fillColor="#00000000"
+        android:strokeColor="#CBD5E1"
+        android:strokeWidth="2.5"
+        android:pathData="M 54,23 A 7,7 0 1,1 54,37 A 7,7 0 1,1 54,23" />
+    <path
+        android:fillColor="#64748B"
+        android:pathData="M 51,36 L 57,36 L 56,41 L 52,41 Z" />
 
-    <!-- Robot Eyes (Bright Blue) -->
+    <!-- Left: Goals Checklist Clipboard -->
     <path
-        android:fillColor="#0EA5E9"
-        android:pathData="M 46,47 m -4,0 a 4,4 0 1,1 8,0 a 4,4 0 1,1 -8,0" />
+        android:fillColor="#E2E8F0"
+        android:pathData="M 23,34 L 43,34 A 3,3 0 0,1 46,37 L 46,65 A 3,3 0 0,1 43,68 L 23,68 A 3,3 0 0,1 20,65 L 20,37 A 3,3 0 0,1 23,34 Z" />
     <path
-        android:fillColor="#0EA5E9"
-        android:pathData="M 62,47 m -4,0 a 4,4 0 1,1 8,0 a 4,4 0 1,1 -8,0" />
+        android:fillColor="#FBBF24"
+        android:pathData="M 29,32 L 37,32 A 2,2 0 0,1 39,34 L 27,34 A 2,2 0 0,1 29,32 Z" />
+    <!-- Checklist items -->
+    <path android:fillColor="#0EA5E9" android:pathData="M 23,39 A 2,2 0 1,1 23,43 A 2,2 0 1,1 23,39" />
+    <path android:fillColor="#22C55E" android:pathData="M 28,40 L 42,40 A 1.5,1.5 0 0,1 42,43 L 28,43 A 1.5,1.5 0 0,1 28,40 Z" />
 
-    <!-- Green Plus Circle (Left) -->
+    <path android:fillColor="#F97316" android:pathData="M 23,47 A 2,2 0 1,1 23,51 A 2,2 0 1,1 23,47" />
+    <path android:fillColor="#FBBF24" android:pathData="M 28,48 L 39,48 A 1.5,1.5 0 0,1 39,51 L 28,51 A 1.5,1.5 0 0,1 28,48 Z" />
+
+    <path android:fillColor="#8B5CF6" android:pathData="M 23,55 A 2,2 0 1,1 23,59 A 2,2 0 1,1 23,55" />
+    <path android:fillColor="#A855F7" android:pathData="M 28,56 L 36,56 A 1.5,1.5 0 0,1 36,59 L 28,59 A 1.5,1.5 0 0,1 28,56 Z" />
+
+    <!-- Right: Bullseye Target -->
+    <path android:fillColor="#EF4444" android:pathData="M 82,34 A 9,9 0 1,1 82,52 A 9,9 0 1,1 82,34" />
+    <path android:fillColor="#FFFFFF" android:pathData="M 82,37 A 6,6 0 1,1 82,49 A 6,6 0 1,1 82,37" />
+    <path android:fillColor="#EF4444" android:pathData="M 82,40 A 3,3 0 1,1 82,46 A 3,3 0 1,1 82,40" />
+    <path android:fillColor="#FBBF24" android:pathData="M 82,42 A 1,1 0 1,1 82,44 A 1,1 0 1,1 82,42" />
+
+    <!-- Right: Bar Chart & Growth Arrow -->
+    <path android:fillColor="#38BDF8" android:pathData="M 72,60 L 76,60 L 76,69 L 72,69 Z" />
+    <path android:fillColor="#FBBF24" android:pathData="M 78,56 L 82,56 L 82,69 L 78,69 Z" />
+    <path android:fillColor="#22C55E" android:pathData="M 84,51 L 88,51 L 88,69 L 84,69 Z" />
     <path
         android:fillColor="#22C55E"
-        android:pathData="M 30,60 m -10,0 a 10,10 0 1,1 20,0 a 10,10 0 1,1 -20,0" />
-    <!-- White Plus Sign -->
-    <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M 29,55 L 31,55 L 31,59 L 35,59 L 35,61 L 31,61 L 31,65 L 29,65 L 29,61 L 25,61 L 25,59 L 29,59 Z" />
+        android:pathData="M 70,62 Q 78,54 87,46 L 87,51 L 90,44 L 83,43 L 85,46 Q 77,53 69,60 Z" />
 
-    <!-- Red Minus Circle (Right) -->
+    <!-- Center: Main Blue Tally Clicker Counter Body -->
     <path
-        android:fillColor="#EF4444"
-        android:pathData="M 78,60 m -10,0 a 10,10 0 1,1 20,0 a 10,10 0 1,1 -20,0" />
-    <!-- White Minus Sign -->
+        android:fillColor="#1E40AF"
+        android:pathData="M 42,42 C 37,42 36,46 36,54 L 36,70 C 36,78 40,82 54,82 C 68,82 72,78 72,70 L 72,54 C 72,46 71,42 66,42 Z" />
     <path
-        android:fillColor="#FFFFFF"
-        android:pathData="M 73,59 L 83,59 L 83,61 L 73,61 Z" />
+        android:fillColor="#2563EB"
+        android:pathData="M 43,44 C 39,44 38,47 38,54 L 38,69 C 38,76 42,80 54,80 C 66,80 70,76 70,69 L 70,54 C 70,47 69,44 65,44 Z" />
 
-    <!-- Bottom Numbers Sequence: 8 7 6 5 4 3 2 1 0 -->
-    <!-- 8 (#EA580C) -->
+    <!-- Tally Counter Knurled Side Wheel -->
     <path
-        android:fillColor="#00000000"
-        android:strokeColor="#EA580C"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:pathData="M 18,81 a 2,2 0 1,1 0,4 a 2,2 0 1,1 0,-4 M 18,85 a 2.5,2.5 0 1,1 0,5 a 2.5,2.5 0 1,1 0,-5" />
-    <!-- 7 (#F59E0B) -->
+        android:fillColor="#334155"
+        android:pathData="M 72,55 L 77,55 A 1,1 0 0,1 78,56 L 78,68 A 1,1 0 0,1 77,69 L 72,69 Z" />
+
+    <!-- Digital Screen Box (Black) -->
     <path
-        android:fillColor="#00000000"
-        android:strokeColor="#F59E0B"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M 24.5,81 L 29.5,81 L 26,90" />
-    <!-- 6 (#EAB308) -->
+        android:fillColor="#0F172A"
+        android:pathData="M 42,47 L 66,47 A 2,2 0 0,1 68,49 L 68,58 A 2,2 0 0,1 66,60 L 42,60 A 2,2 0 0,1 40,58 L 40,49 A 2,2 0 0,1 42,47 Z" />
+
+    <!-- Digital Numbers '0 1 2 3' on screen -->
+    <!-- 0 -->
+    <path android:fillColor="#FFFFFF" android:pathData="M 43.5,50.5 L 46.5,50.5 L 46.5,56.5 L 43.5,56.5 Z M 44.5,51.5 L 44.5,55.5 L 45.5,55.5 L 45.5,51.5 Z" />
+    <!-- 1 -->
+    <path android:fillColor="#FFFFFF" android:pathData="M 49.5,50.5 L 51,50.5 L 51,56.5 L 49.5,56.5 Z" />
+    <!-- 2 -->
+    <path android:fillColor="#FFFFFF" android:pathData="M 53.5,50.5 L 56.5,50.5 L 56.5,53.5 L 53.5,53.5 L 53.5,56.5 L 56.5,56.5 L 56.5,55.5 L 54.5,55.5 L 54.5,54.5 L 56.5,54.5 L 56.5,50.5 Z" />
+    <!-- 3 -->
+    <path android:fillColor="#FFFFFF" android:pathData="M 59,50.5 L 62,50.5 L 62,56.5 L 59,56.5 L 59,55.5 L 61,55.5 L 61,54 L 59.5,54 L 59.5,53 L 61,53 L 61,51.5 L 59,51.5 Z" />
+
+    <!-- Metallic Central Click Button -->
     <path
-        android:fillColor="#00000000"
-        android:strokeColor="#EAB308"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:pathData="M 38,81 C 34,81 33.5,85 33.5,87.5 C 33.5,90 38.5,90 38.5,87.5 C 38.5,85 33.5,85 33.5,87.5" />
-    <!-- 5 (#84CC16) -->
+        android:fillColor="#E2E8F0"
+        android:pathData="M 54,64 A 8,8 0 1,1 54,80 A 8,8 0 1,1 54,64" />
     <path
-        android:fillColor="#00000000"
-        android:strokeColor="#84CC16"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:pathData="M 47.5,81 L 43,81 L 43,85 C 43,85 47.5,84.5 47.5,87.5 C 47.5,90 43,90 43,88.5" />
-    <!-- 4 (#22C55E) -->
+        android:fillColor="#94A3B8"
+        android:pathData="M 54,66 A 6,6 0 1,1 54,78 A 6,6 0 1,1 54,66" />
     <path
-        android:fillColor="#00000000"
-        android:strokeColor="#22C55E"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
-        android:pathData="M 55.5,87 L 51,87 L 54.5,81 L 54.5,90" />
-    <!-- 3 (#10B981) -->
+        android:fillColor="#CBD5E1"
+        android:pathData="M 54,68 A 4,4 0 1,1 54,76 A 4,4 0 1,1 54,68" />
+
+    <!-- Bottom Banner Pill: SMART COUNTER -->
     <path
-        android:fillColor="#00000000"
-        android:strokeColor="#10B981"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:pathData="M 60.5,81 L 65.5,81 L 63,85.5 C 65.5,85.5 65.5,90 60.5,90" />
-    <!-- 2 (#14B8A6) -->
+        android:fillColor="#FBBF24"
+        android:pathData="M 26,88 L 82,88 A 4,4 0 0,1 86,92 L 86,93 A 4,4 0 0,1 82,97 L 26,97 A 4,4 0 0,1 22,93 L 22,92 A 4,4 0 0,1 26,88 Z" />
     <path
-        android:fillColor="#00000000"
-        android:strokeColor="#14B8A6"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:pathData="M 69.5,83 C 69.5,80.5 74.5,80.5 74.5,83 C 74.5,86 69.5,88 69.5,90 L 74.5,90" />
-    <!-- 1 (#2563EB) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#2563EB"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:pathData="M 79,82.5 L 81,81 L 81,90 M 79,90 L 83,90" />
-    <!-- 0 (#3B82F6) -->
-    <path
-        android:fillColor="#00000000"
-        android:strokeColor="#3B82F6"
-        android:strokeWidth="1.5"
-        android:strokeLineCap="round"
-        android:pathData="M 90,81 a 2.5,4.5 0 1,1 0,9 a 2.5,4.5 0 1,1 0,-9" />
+        android:fillColor="#0F172A"
+        android:pathData="M 32,91 L 34,91 L 34,94 L 32,94 Z M 37,91 L 39,91 L 39,94 L 37,94 Z M 42,91 L 44,91 L 44,94 L 42,94 Z M 47,91 L 49,91 L 49,94 L 47,94 Z M 52,91 L 54,91 L 54,94 L 52,94 Z M 57,91 L 59,91 L 59,94 L 57,94 Z M 62,91 L 64,91 L 64,94 L 62,94 Z M 67,91 L 69,91 L 69,94 L 67,94 Z M 72,91 L 74,91 L 74,94 L 72,94 Z" />
 </vector>

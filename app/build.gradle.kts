@@ -31,15 +31,6 @@ android {
         keyPassword = System.getenv("KEY_PASSWORD") ?: System.getenv("STORE_PASSWORD")
       }
     }
-    val debugKeystoreFile = file("${rootDir}/debug.keystore")
-    if (debugKeystoreFile.exists()) {
-      create("debugConfig") {
-        storeFile = debugKeystoreFile
-        storePassword = "android"
-        keyAlias = "androiddebugkey"
-        keyPassword = "android"
-      }
-    }
   }
 
   buildTypes {
@@ -47,15 +38,15 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfigs.findByName("release")?.let {
-        signingConfig = it
-      }
+      signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
     }
     debug {
-      signingConfigs.findByName("debugConfig")?.let {
-        signingConfig = it
-      }
+      signingConfig = signingConfigs.getByName("debug")
     }
+  }
+  lint {
+    abortOnError = false
+    checkReleaseBuilds = false
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11

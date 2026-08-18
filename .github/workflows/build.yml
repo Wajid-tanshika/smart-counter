@@ -64,6 +64,7 @@ jobs:
         with:
           tag_name: v1.0.${{ github.run_number }}
           name: "Smart Counter v1.0.${{ github.run_number }}"
+          fail_on_unmatched_files: false
           files: |
             app/build/outputs/apk/debug/*.apk
             app/build/outputs/apk/release/*.apk

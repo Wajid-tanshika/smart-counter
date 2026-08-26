@@ -310,7 +310,7 @@ fun CounterScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(bottom = 12.dp),
+                            .padding(bottom = 6.dp),
                         horizontalArrangement = Arrangement.Center,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -332,6 +332,13 @@ fun CounterScreen(
                         }
                     }
                 }
+
+                // AdMob Banner Ad
+                com.example.ads.AdmobBanner(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                )
             }
         }
     }

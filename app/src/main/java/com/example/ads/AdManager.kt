@@ -42,9 +42,9 @@ import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 object AdConstants {
     // 100% Real Live Production AdMob IDs (Play Store Monetization)
     const val APP_ID = "ca-app-pub-1859648502281028~7809732470"
-    const val APP_OPEN_AD_ID = "ca-app-pub-1859648502281028/2338291242"
-    const val BANNER_AD_ID = "ca-app-pub-1859648502281028/8764134185"
-    const val INTERSTITIAL_AD_ID = "ca-app-pub-1859648502281028/8413579150"
+    const val APP_OPEN_AD_ID = "ca-app-pub-1859648502281028/3997929605"
+    const val BANNER_AD_ID = "ca-app-pub-1859648502281028/6432521251"
+    const val INTERSTITIAL_AD_ID = "ca-app-pub-1859648502281028/2435285123"
 
     // Frequency cap: Minimum 30 seconds between interstitial ads to protect user experience and maximize fill
     const val INTERSTITIAL_MIN_INTERVAL_MS = 30_000L

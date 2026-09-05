@@ -1,0 +1,6 @@
+{
+  "name": "Smart Counter",
+  "description": "Count Objects, Scan Barcodes & Track Inventory. Fast offline-first smart tally counter, CameraX & ML Kit barcode and QR scanner, and lightweight inventory stock manager.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

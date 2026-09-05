@@ -1,6 +1,0 @@
-{
-  "name": "Smart Counter",
-  "description": "Smart Counter with customizable themes, haptic and sound feedback, history, statistics, and a full-featured Goals and Habits tracker.",
-  "requestFramePermissions": [],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
-}

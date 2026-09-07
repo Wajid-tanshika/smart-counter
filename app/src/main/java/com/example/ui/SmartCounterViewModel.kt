@@ -14,6 +14,9 @@ import com.example.data.ActivityHistoryEntity
 import com.example.data.AppSettingsManager
 import com.example.data.CountingSessionEntity
 import com.example.data.InventoryItemEntity
+import com.example.data.ProductLookupService
+import com.example.data.ScannedProductEntity
+import com.example.data.ScannedProductInfo
 import com.example.data.SmartCounterDatabase
 import com.example.data.SmartCounterRepository
 import com.example.util.ExportHelper
@@ -47,6 +50,7 @@ class SmartCounterViewModel(application: Application) : AndroidViewModel(applica
 
     private val repository: SmartCounterRepository
     val settings: AppSettingsManager
+    private val productLookupService: ProductLookupService
 
     // Tone & Vibration feedback
     private var toneGenerator: ToneGenerator? = null
@@ -56,6 +60,7 @@ class SmartCounterViewModel(application: Application) : AndroidViewModel(applica
         val db = SmartCounterDatabase.getDatabase(application)
         repository = SmartCounterRepository(db.smartCounterDao())
         settings = AppSettingsManager(application)
+        productLookupService = ProductLookupService(application, db.smartCounterDao())
 
         try {
             toneGenerator = ToneGenerator(AudioManager.STREAM_MUSIC, 70)
@@ -411,6 +416,53 @@ class SmartCounterViewModel(application: Application) : AndroidViewModel(applica
     fun recordScan(type: String, title: String, rawValue: String, quantity: Int = 1, notes: String = "") {
         viewModelScope.launch(Dispatchers.IO) {
             repository.recordScan(type, title, rawValue, quantity, notes)
+        }
+    }
+
+    suspend fun lookupProduct(barcode: String, format: String): ScannedProductInfo {
+        return productLookupService.lookupProduct(barcode, format)
+    }
+
+    fun recordProductScan(product: ScannedProductInfo, onRecorded: () -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val type = if (product.isUrl || product.format == "QR_CODE") "QR" else "BARCODE"
+            val title = product.name.ifBlank { "Barcode: ${product.barcode}" }
+            val rawValue = product.barcode
+            val notesList = mutableListOf<String>()
+            if (product.brand.isNotBlank()) notesList.add("Brand: ${product.brand}")
+            if (product.quantityInfo.isNotBlank()) notesList.add("Pack: ${product.quantityInfo}")
+            if (product.price.isNotBlank()) notesList.add("Price: ${product.price}")
+            if (product.countryOfOrigin.isNotBlank()) notesList.add("Origin: ${product.countryOfOrigin}")
+            if (product.manufacturer.isNotBlank()) notesList.add("Mfr: ${product.manufacturer}")
+            if (product.isUrl && product.url.isNotBlank()) notesList.add("URL: ${product.url}")
+            if (notesList.isEmpty() && product.description.isNotBlank()) notesList.add(product.description)
+
+            repository.recordScan(
+                type = type,
+                title = title,
+                rawValue = rawValue,
+                quantity = 1,
+                notes = notesList.joinToString(" • ")
+            )
+            launch(Dispatchers.Main) {
+                onRecorded()
+            }
+        }
+    }
+
+    fun recordVoiceCounterSession(finalCount: Int, onRecorded: () -> Unit = {}) {
+        viewModelScope.launch(Dispatchers.IO) {
+            // Save as counting session
+            repository.saveSession(
+                title = "Voice Counter Session",
+                count = finalCount,
+                target = _targetCount.value,
+                category = "Voice Counter",
+                notes = "Counting method: Voice Counter. Final count: $finalCount"
+            )
+            launch(Dispatchers.Main) {
+                onRecorded()
+            }
         }
     }
 

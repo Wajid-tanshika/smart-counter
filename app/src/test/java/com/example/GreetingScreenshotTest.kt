@@ -6,6 +6,7 @@ import androidx.compose.ui.test.onRoot
 import androidx.test.core.app.ApplicationProvider
 import com.example.ui.CounterScreen
 import com.example.ui.CounterViewModel
+import com.example.ui.GoalsViewModel
 import com.example.ui.theme.MyApplicationTheme
 import com.github.takahirom.roborazzi.RobolectricDeviceQualifiers
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -26,11 +27,15 @@ class GreetingScreenshotTest {
   @Test
   fun greeting_screenshot() {
     val application = ApplicationProvider.getApplicationContext<Application>()
-    val viewModel = CounterViewModel(application)
+    val counterViewModel = CounterViewModel(application)
+    val goalsViewModel = GoalsViewModel(application)
 
     composeTestRule.setContent {
       MyApplicationTheme {
-        CounterScreen(viewModel = viewModel)
+        CounterScreen(
+          counterViewModel = counterViewModel,
+          goalsViewModel = goalsViewModel
+        )
       }
     }
 

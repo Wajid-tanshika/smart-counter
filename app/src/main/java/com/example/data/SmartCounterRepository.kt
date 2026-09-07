@@ -104,6 +104,10 @@ class SmartCounterRepository(private val dao: SmartCounterDao) {
     suspend fun deleteHistory(id: Long) = dao.deleteHistory(id)
     suspend fun deleteAllHistory() = dao.deleteAllHistory()
 
+    // Scanned Products Cache & History
+    suspend fun getCachedProduct(barcode: String): ScannedProductEntity? = dao.getScannedProduct(barcode)
+    suspend fun cacheScannedProduct(product: ScannedProductEntity) = dao.insertScannedProduct(product)
+
     // Aggregations
     val totalSessionsCount: Flow<Int> = dao.getTotalSessionsCount()
     val totalItemsCounted: Flow<Int> = dao.getTotalItemsCounted()

@@ -29,32 +29,42 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.FlashOn
 import androidx.compose.material.icons.filled.FlashlightOff
 import androidx.compose.material.icons.filled.FlashlightOn
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Language
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.ShoppingBag
+import androidx.compose.material.icons.filled.WifiOff
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -79,6 +89,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -88,7 +99,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import coil.compose.AsyncImage
 import com.example.data.InventoryItemEntity
+import com.example.data.ScannedProductInfo
 import com.example.scanner.BarcodeAnalyzer
 import com.example.ui.SmartCounterViewModel
 import com.google.mlkit.vision.barcode.common.Barcode
@@ -135,6 +148,8 @@ fun ScannerScreen(
     // Last scanned result in Single mode
     var lastScannedValue by remember { mutableStateOf<String?>(null) }
     var lastScannedFormat by remember { mutableStateOf<String?>(null) }
+    var productInfo by remember { mutableStateOf<ScannedProductInfo?>(null) }
+    var isProductLoading by remember { mutableStateOf(false) }
     var linkedInventoryItem by remember { mutableStateOf<InventoryItemEntity?>(null) }
     var showAddToInventoryDialog by remember { mutableStateOf(false) }
 
@@ -146,16 +161,28 @@ fun ScannerScreen(
     var selectedCategory by remember { mutableStateOf("Boxes") }
     var objectCount by remember { mutableIntStateOf(0) }
 
-    // Check inventory when barcode is scanned
-    LaunchedEffect(lastScannedValue) {
+    // Lookup product information and inventory when barcode is scanned
+    LaunchedEffect(lastScannedValue, lastScannedFormat) {
         val code = lastScannedValue
         if (!code.isNullOrBlank()) {
+            isProductLoading = true
+            try {
+                val info = viewModel.lookupProduct(code, lastScannedFormat ?: "BARCODE")
+                productInfo = info
+            } catch (e: Exception) {
+                Log.e("ScannerScreen", "Lookup failed", e)
+            } finally {
+                isProductLoading = false
+            }
+
             val item = withContext(Dispatchers.IO) {
                 viewModel.findInventoryByBarcode(code)
             }
             linkedInventoryItem = item
         } else {
+            productInfo = null
             linkedInventoryItem = null
+            isProductLoading = false
         }
     }
 
@@ -304,11 +331,6 @@ fun ScannerScreen(
                                                 if (lastScannedValue == null) {
                                                     lastScannedValue = rawValue
                                                     lastScannedFormat = formatName
-                                                    viewModel.recordScan(
-                                                        type = if (firstBarcode.format == Barcode.FORMAT_QR_CODE) "QR" else "BARCODE",
-                                                        title = "Scan: $rawValue",
-                                                        rawValue = rawValue
-                                                    )
                                                 }
                                             }
                                             ScannerMode.BULK -> {
@@ -372,8 +394,28 @@ fun ScannerScreen(
                 SingleScanResultBottomCard(
                     scannedValue = lastScannedValue,
                     scannedFormat = lastScannedFormat,
+                    productInfo = productInfo,
+                    isLoading = isProductLoading,
                     linkedItem = linkedInventoryItem,
-                    onScanAgain = { lastScannedValue = null },
+                    onScanAgain = {
+                        lastScannedValue = null
+                        productInfo = null
+                    },
+                    onSaveToHistory = {
+                        val info = productInfo
+                        if (info != null) {
+                            viewModel.recordProductScan(info) {
+                                Toast.makeText(context, "Saved to History!", Toast.LENGTH_SHORT).show()
+                            }
+                        } else {
+                            viewModel.recordScan(
+                                type = if (lastScannedFormat == "QR Code") "QR" else "BARCODE",
+                                title = "Barcode: ${lastScannedValue ?: ""}",
+                                rawValue = lastScannedValue ?: ""
+                            )
+                            Toast.makeText(context, "Saved to History!", Toast.LENGTH_SHORT).show()
+                        }
+                    },
                     onAddToInventory = { showAddToInventoryDialog = true },
                     onAdjustInventory = { delta ->
                         linkedInventoryItem?.let { item ->
@@ -418,10 +460,14 @@ fun ScannerScreen(
 
     // Add To Inventory Dialog for freshly scanned barcode
     if (showAddToInventoryDialog && lastScannedValue != null) {
-        var productName by remember { mutableStateOf("") }
+        var productName by remember(productInfo) {
+            mutableStateOf(productInfo?.name?.takeIf { productInfo?.isFound == true } ?: "")
+        }
         var productQty by remember { mutableStateOf("1") }
         var minStock by remember { mutableStateOf("5") }
-        var category by remember { mutableStateOf("General") }
+        var category by remember(productInfo) {
+            mutableStateOf(productInfo?.category?.takeIf { it.isNotBlank() } ?: "General")
+        }
 
         AlertDialog(
             onDismissRequest = { showAddToInventoryDialog = false },
@@ -498,8 +544,11 @@ fun ScannerScreen(
 fun SingleScanResultBottomCard(
     scannedValue: String?,
     scannedFormat: String?,
+    productInfo: ScannedProductInfo?,
+    isLoading: Boolean,
     linkedItem: InventoryItemEntity?,
     onScanAgain: () -> Unit,
+    onSaveToHistory: () -> Unit,
     onAddToInventory: () -> Unit,
     onAdjustInventory: (Int) -> Unit
 ) {
@@ -514,7 +563,9 @@ fun SingleScanResultBottomCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(20.dp)
+                .heightIn(min = 90.dp, max = 460.dp)
+                .verticalScroll(rememberScrollState())
+                .padding(18.dp)
         ) {
             if (scannedValue == null) {
                 Row(
@@ -534,141 +585,615 @@ fun SingleScanResultBottomCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
+            } else if (isLoading) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(36.dp), strokeWidth = 3.dp)
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Text(
+                        text = "Searching product database...",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = "Barcode: $scannedValue",
+                        fontSize = 13.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             } else {
-                val isUrl = scannedValue.startsWith("http://", ignoreCase = true) ||
+                val isUrl = productInfo?.isUrl == true ||
+                        scannedValue.startsWith("http://", ignoreCase = true) ||
                         scannedValue.startsWith("https://", ignoreCase = true)
 
+                // Top Header Row with Format, Offline tag, and Scan Again button
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = "Format: ${scannedFormat ?: "Barcode"}",
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.primary
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(
+                            text = "Format: ${productInfo?.format ?: scannedFormat ?: "Barcode"}",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        if (productInfo?.isOffline == true) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFFEF3C7))
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.WifiOff,
+                                    contentDescription = null,
+                                    tint = Color(0xFFD97706),
+                                    modifier = Modifier.size(12.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Offline Cached",
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFFD97706)
+                                )
+                            }
+                        }
+                    }
+
                     TextButton(onClick = onScanAgain) {
                         Text("Scan Again")
                     }
                 }
 
-                Text(
-                    text = scannedValue,
-                    fontSize = 16.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(vertical = 4.dp)
-                )
+                Spacer(modifier = Modifier.height(6.dp))
 
-                // Actions: Copy & Open URL
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    OutlinedButton(
-                        onClick = {
-                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                            val clip = ClipData.newPlainText("Barcode Result", scannedValue)
-                            clipboard.setPrimaryClip(clip)
-                            Toast.makeText(context, "Copied to clipboard!", Toast.LENGTH_SHORT).show()
-                        },
-                        shape = RoundedCornerShape(10.dp),
-                        modifier = Modifier.weight(1f)
+                // Case 1: URL QR Code or Web Barcode
+                if (isUrl) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        Icon(imageVector = Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Copy", fontSize = 13.sp)
-                    }
-
-                    if (isUrl) {
-                        Button(
-                            onClick = {
-                                try {
-                                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(scannedValue))
-                                    context.startActivity(browserIntent)
-                                } catch (e: Exception) {
-                                    Toast.makeText(context, "Cannot open URL", Toast.LENGTH_SHORT).show()
-                                }
-                            },
-                            shape = RoundedCornerShape(10.dp),
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Icon(imageVector = Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Open URL", fontSize = 13.sp)
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(26.dp)
+                        )
+                        Spacer(modifier = Modifier.width(10.dp))
+                        Column {
+                            Text(
+                                text = productInfo?.name?.ifBlank { "Web Link / QR Resource" } ?: "Web Link / QR Resource",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Scan date: ${productInfo?.formattedDate ?: ""}",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
                         }
                     }
-                }
 
-                // Inventory Link Integration (Requirement 13)
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    if (linkedItem != null) {
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Prominently display Barcode Number
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(12.dp),
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(text = "Barcode / QR Data", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                Text(
+                                    text = scannedValue,
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                            IconButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Barcode", scannedValue))
+                                Toast.makeText(context, "Copied to clipboard!", Toast.LENGTH_SHORT).show()
+                            }) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Copy", modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Secondary URL section
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "Website Address (URL)",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = productInfo?.url?.ifBlank { scannedValue } ?: scannedValue,
+                                fontSize = 13.sp,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(12.dp))
+
+                    // URL Action Buttons (Optional Open Website button only if user wants to open it!)
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                try {
+                                    val targetUrl = productInfo?.url?.ifBlank { scannedValue } ?: scannedValue
+                                    val browserIntent = Intent(Intent.ACTION_VIEW, Uri.parse(targetUrl))
+                                    context.startActivity(browserIntent)
+                                } catch (e: Exception) {
+                                    Toast.makeText(context, "Cannot open browser", Toast.LENGTH_SHORT).show()
+                                }
+                            },
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Open Website", fontSize = 13.sp)
+                        }
+
+                        Button(
+                            onClick = onSaveToHistory,
+                            modifier = Modifier.weight(1f),
+                            shape = RoundedCornerShape(10.dp),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                                contentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        ) {
+                            Icon(Icons.Default.Bookmark, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Save", fontSize = 13.sp)
+                        }
+                    }
+                }
+                // Case 2: Product Information Found Inside App
+                else if (productInfo != null && productInfo.isFound) {
+                    // Top Product Visual & Identification Row
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(14.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        if (productInfo.imageUrl.isNotBlank()) {
+                            AsyncImage(
+                                model = productInfo.imageUrl,
+                                contentDescription = productInfo.name,
+                                modifier = Modifier
+                                    .size(86.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(Color.White)
+                                    .border(1.dp, MaterialTheme.colorScheme.outlineVariant, RoundedCornerShape(12.dp)),
+                                contentScale = ContentScale.Fit
+                            )
+                        } else {
+                            Box(
+                                modifier = Modifier
+                                    .size(76.dp)
+                                    .clip(RoundedCornerShape(12.dp))
+                                    .background(MaterialTheme.colorScheme.primaryContainer),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.ShoppingBag,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    modifier = Modifier.size(36.dp)
+                                )
+                            }
+                        }
+
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = productInfo.name,
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+
+                            if (productInfo.brand.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Brand: ${productInfo.brand}",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+
+                            if (productInfo.category.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = productInfo.category,
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+
+                            if (productInfo.price.isNotBlank()) {
+                                Spacer(modifier = Modifier.height(2.dp))
+                                Text(
+                                    text = "Price: ${productInfo.price}",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF10B981)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Barcode number (Always prominently displayed!)
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 12.dp, vertical = 8.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Column {
+                                Text(text = "Barcode Number", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 Text(
-                                    text = "In Inventory: ${linkedItem.name}",
-                                    fontSize = 14.sp,
+                                    text = productInfo.barcode,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                            }
+                            IconButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Barcode", productInfo.barcode))
+                                Toast.makeText(context, "Barcode copied!", Toast.LENGTH_SHORT).show()
+                            }) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = "Copy Barcode", modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Specifications & Details Section (When available)
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        if (productInfo.quantityInfo.isNotBlank()) {
+                            ProductDetailRow(label = "Quantity / Pack", value = productInfo.quantityInfo)
+                        }
+                        if (productInfo.manufacturer.isNotBlank()) {
+                            ProductDetailRow(label = "Manufacturer", value = productInfo.manufacturer)
+                        }
+                        if (productInfo.countryOfOrigin.isNotBlank()) {
+                            ProductDetailRow(label = "Country of Origin", value = productInfo.countryOfOrigin)
+                        }
+                        if (productInfo.description.isNotBlank() && productInfo.description != productInfo.name) {
+                            ProductDetailRow(label = "Description", value = productInfo.description)
+                        }
+                        if (productInfo.ingredients.isNotBlank()) {
+                            ProductDetailRow(label = "Ingredients / Specs", value = productInfo.ingredients)
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Inventory stock linkage
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f))
+                    ) {
+                        if (linkedItem != null) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "In Inventory: ${linkedItem.name}",
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Text(
+                                        text = "Current Stock: ${linkedItem.quantity} units",
+                                        fontSize = 12.sp,
+                                        color = if (linkedItem.isLowStock) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    IconButton(onClick = { onAdjustInventory(-1) }) {
+                                        Icon(Icons.Default.Remove, contentDescription = "Decrease", modifier = Modifier.size(18.dp))
+                                    }
+                                    IconButton(onClick = { onAdjustInventory(+1) }) {
+                                        Icon(Icons.Default.Add, contentDescription = "Increase", modifier = Modifier.size(18.dp))
+                                    }
+                                }
+                            }
+                        } else {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 12.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Not in your inventory yet",
+                                    fontSize = 12.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Button(
+                                    onClick = onAddToInventory,
+                                    shape = RoundedCornerShape(8.dp),
+                                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 10.dp, vertical = 4.dp)
+                                ) {
+                                    Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("+ Add Item", fontSize = 11.sp)
+                                }
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Primary Action Buttons
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = onSaveToHistory,
+                            modifier = Modifier.weight(1.2f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.Bookmark, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Save to History", fontSize = 13.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Barcode", productInfo.barcode))
+                                Toast.makeText(context, "Barcode copied!", Toast.LENGTH_SHORT).show()
+                            },
+                            modifier = Modifier.weight(0.9f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Copy", fontSize = 13.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = onScanAgain,
+                            modifier = Modifier.weight(0.9f),
+                            shape = RoundedCornerShape(10.dp)
+                        ) {
+                            Text("Scan Again", fontSize = 13.sp)
+                        }
+                    }
+                }
+                // Case 3: Product NOT Found
+                else {
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(22.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "Product information not found",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+
+                        // Barcode number, format, and scan date/time (Always displayed!)
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Column(
+                                modifier = Modifier.padding(12.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Text(
+                                    text = "Barcode Number: $scannedValue",
+                                    fontSize = 15.sp,
                                     fontWeight = FontWeight.Bold,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                                 Text(
-                                    text = "Stock: ${linkedItem.quantity} units",
-                                    fontSize = 12.sp,
-                                    color = if (linkedItem.isLowStock) Color(0xFFF59E0B) else MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = "Barcode Format: ${scannedFormat ?: "Barcode"}",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                            }
-
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                IconButton(onClick = { onAdjustInventory(-1) }) {
-                                    Icon(imageVector = Icons.Default.Remove, contentDescription = "Decrease")
-                                }
-                                IconButton(onClick = { onAdjustInventory(+1) }) {
-                                    Icon(imageVector = Icons.Default.Add, contentDescription = "Increase")
+                                Text(
+                                    text = "Scan Date: ${productInfo?.formattedDate ?: ""}",
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                if (productInfo?.isOffline == true) {
+                                    Text(
+                                        text = "Device is currently offline. Connect to network to search online catalog.",
+                                        fontSize = 12.sp,
+                                        color = Color(0xFFD97706)
+                                    )
                                 }
                             }
                         }
-                    } else {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                text = "Item not yet in inventory",
-                                fontSize = 13.sp,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Button(
-                                onClick = onAddToInventory,
+
+                        // Inventory action if not present
+                        if (linkedItem != null) {
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(10.dp)
                             ) {
-                                Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column {
+                                        Text(text = "In Inventory: ${linkedItem.name}", fontWeight = FontWeight.Bold)
+                                        Text(text = "Stock: ${linkedItem.quantity} units", fontSize = 12.sp)
+                                    }
+                                    Row {
+                                        IconButton(onClick = { onAdjustInventory(-1) }) {
+                                            Icon(Icons.Default.Remove, contentDescription = "Decrease")
+                                        }
+                                        IconButton(onClick = { onAdjustInventory(+1) }) {
+                                            Icon(Icons.Default.Add, contentDescription = "Increase")
+                                        }
+                                    }
+                                }
+                            }
+                        } else {
+                            Button(
+                                onClick = onAddToInventory,
+                                modifier = Modifier.fillMaxWidth(),
+                                shape = RoundedCornerShape(10.dp),
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = MaterialTheme.colorScheme.primaryContainer,
+                                    contentColor = MaterialTheme.colorScheme.onPrimaryContainer
+                                )
+                            ) {
+                                Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Add this Barcode to Inventory", fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
+
+                        // Action Buttons: Scan Again, Copy Barcode, Save to History
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = onSaveToHistory,
+                                modifier = Modifier.weight(1.1f),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Default.Bookmark, contentDescription = null, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
-                                Text("+ Add to Inventory", fontSize = 12.sp)
+                                Text("Save to History", fontSize = 13.sp)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                    clipboard.setPrimaryClip(ClipData.newPlainText("Barcode", scannedValue))
+                                    Toast.makeText(context, "Barcode copied!", Toast.LENGTH_SHORT).show()
+                                },
+                                modifier = Modifier.weight(0.9f),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Icon(Icons.Default.ContentCopy, contentDescription = null, modifier = Modifier.size(16.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("Copy", fontSize = 13.sp)
+                            }
+
+                            OutlinedButton(
+                                onClick = onScanAgain,
+                                modifier = Modifier.weight(0.9f),
+                                shape = RoundedCornerShape(10.dp)
+                            ) {
+                                Text("Scan Again", fontSize = 13.sp)
                             }
                         }
                     }
                 }
             }
         }
+    }
+}
+
+@Composable
+fun ProductDetailRow(label: String, value: String) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Top
+    ) {
+        Text(
+            text = label,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.width(130.dp)
+        )
+        Text(
+            text = value,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.weight(1f),
+            textAlign = androidx.compose.ui.text.style.TextAlign.End
+        )
     }
 }
 

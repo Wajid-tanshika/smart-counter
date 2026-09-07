@@ -25,10 +25,12 @@ import androidx.compose.material.icons.filled.DeleteSweep
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Inventory2
+import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.Numbers
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.QrCodeScanner
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.ShoppingBag
 import androidx.compose.material.icons.filled.TableChart
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -215,6 +217,8 @@ fun HistoryScreen(viewModel: SmartCounterViewModel) {
                     items(historyItems, key = { it.id }) { item ->
                         val (icon, tint) = when (item.type) {
                             "COUNT" -> Pair(Icons.Default.Numbers, Color(0xFF3B82F6))
+                            "VOICE_COUNT" -> Pair(Icons.Default.Mic, Color(0xFF8B5CF6))
+                            "PRODUCT_SCAN" -> Pair(Icons.Default.ShoppingBag, Color(0xFF0EA5E9))
                             "BARCODE", "QR", "BULK_SCAN" -> Pair(Icons.Default.QrCodeScanner, Color(0xFF10B981))
                             "INVENTORY" -> Pair(Icons.Default.Inventory2, Color(0xFFF59E0B))
                             else -> Pair(Icons.Default.History, MaterialTheme.colorScheme.primary)
@@ -256,8 +260,10 @@ fun HistoryScreen(viewModel: SmartCounterViewModel) {
                                             fontWeight = FontWeight.Bold,
                                             color = MaterialTheme.colorScheme.onSurface,
                                             maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis
+                                            overflow = TextOverflow.Ellipsis,
+                                            modifier = Modifier.weight(1f, fill = false)
                                         )
+                                        Spacer(modifier = Modifier.width(8.dp))
                                         Text(
                                             text = dateFormat.format(Date(item.timestamp)),
                                             fontSize = 11.sp,
@@ -272,17 +278,17 @@ fun HistoryScreen(viewModel: SmartCounterViewModel) {
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1,
+                                        maxLines = 2,
                                         overflow = TextOverflow.Ellipsis
                                     )
 
                                     if (item.notes.isNotBlank()) {
-                                        Spacer(modifier = Modifier.height(2.dp))
+                                        Spacer(modifier = Modifier.height(3.dp))
                                         Text(
                                             text = item.notes,
                                             fontSize = 12.sp,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                                            maxLines = 1,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.85f),
+                                            maxLines = 3,
                                             overflow = TextOverflow.Ellipsis
                                         )
                                     }

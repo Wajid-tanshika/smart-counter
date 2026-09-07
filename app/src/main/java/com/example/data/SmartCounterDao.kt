@@ -88,4 +88,14 @@ interface SmartCounterDao {
 
     @Query("SELECT COUNT(*) FROM inventory_items")
     fun getTotalInventoryCount(): Flow<Int>
+
+    // --- Scanned Products Cache ---
+    @Query("SELECT * FROM scanned_products WHERE barcode = :barcode LIMIT 1")
+    suspend fun getScannedProduct(barcode: String): ScannedProductEntity?
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertScannedProduct(product: ScannedProductEntity)
+
+    @Query("SELECT * FROM scanned_products ORDER BY scannedAt DESC")
+    fun getAllScannedProducts(): Flow<List<ScannedProductEntity>>
 }

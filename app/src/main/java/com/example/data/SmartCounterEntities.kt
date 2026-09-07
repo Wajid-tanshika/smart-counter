@@ -43,3 +43,46 @@ data class ActivityHistoryEntity(
     val notes: String = "",
     val timestamp: Long = System.currentTimeMillis()
 )
+
+@Entity(tableName = "scanned_products")
+data class ScannedProductEntity(
+    @PrimaryKey val barcode: String,
+    val name: String,
+    val brand: String = "",
+    val imageUrl: String = "",
+    val category: String = "",
+    val quantityInfo: String = "",
+    val price: String = "",
+    val description: String = "",
+    val manufacturer: String = "",
+    val countryOfOrigin: String = "",
+    val ingredients: String = "",
+    val format: String = "",
+    val isUrl: Boolean = false,
+    val url: String = "",
+    val scannedAt: Long = System.currentTimeMillis()
+)
+
+data class ScannedProductInfo(
+    val barcode: String,
+    val name: String = "",
+    val brand: String = "",
+    val imageUrl: String = "",
+    val category: String = "",
+    val quantityInfo: String = "",
+    val price: String = "",
+    val description: String = "",
+    val manufacturer: String = "",
+    val countryOfOrigin: String = "",
+    val ingredients: String = "",
+    val format: String = "BARCODE",
+    val isUrl: Boolean = false,
+    val url: String = "",
+    val isFound: Boolean = true,
+    val isOffline: Boolean = false,
+    val scannedAt: Long = System.currentTimeMillis()
+) {
+    val formattedDate: String
+        get() = java.text.SimpleDateFormat("yyyy-MM-dd HH:mm", java.util.Locale.getDefault()).format(java.util.Date(scannedAt))
+}
+

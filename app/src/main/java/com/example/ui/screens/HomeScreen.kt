@@ -1,5 +1,6 @@
 package com.example.ui.screens
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -48,6 +49,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -58,6 +61,7 @@ import com.example.data.ActivityHistoryEntity
 import com.example.ui.CounterSubScreen
 import com.example.ui.MainNavigationTab
 import com.example.ui.SmartCounterViewModel
+import com.example.R
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -104,20 +108,14 @@ fun HomeScreen(
                         )
                     }
 
-                    Box(
+                    Image(
+                        painter = painterResource(id = R.drawable.img_smart_counter_logo),
+                        contentDescription = "Smart Counter Logo",
+                        contentScale = ContentScale.Fit,
                         modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primaryContainer),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Tag,
-                            contentDescription = "Smart Counter",
-                            tint = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
+                            .size(52.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                    )
                 }
             }
         }

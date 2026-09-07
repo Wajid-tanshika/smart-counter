@@ -9,9 +9,10 @@ import androidx.room.RoomDatabase
     entities = [
         CountingSessionEntity::class,
         InventoryItemEntity::class,
-        ActivityHistoryEntity::class
+        ActivityHistoryEntity::class,
+        ScannedProductEntity::class
     ],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 abstract class SmartCounterDatabase : RoomDatabase() {

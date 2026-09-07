@@ -1,4 +1,4 @@
-name: Build Release AAB
+name: Build Release APK & AAB
 
 on:
   push:
@@ -29,23 +29,28 @@ jobs:
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-upload-key.jks
 
-      - name: Build release AAB
+      - name: Build Release APK & AAB
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
           STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: gradle bundleRelease
+        run: |
+          gradle assembleRelease bundleRelease
 
-      - name: Upload AAB artifact
+      - name: Upload APK & AAB artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-aab
-          path: app/build/outputs/bundle/release/app-release.aab
+          name: app-release-files
+          path: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
 
-      - name: Create GitHub Release with AAB
+      - name: Create GitHub Release with APK & AAB
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
-          files: app/build/outputs/bundle/release/app-release.aab
+          files: |
+            app/build/outputs/apk/release/app-release.apk
+            app/build/outputs/bundle/release/app-release.aab
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

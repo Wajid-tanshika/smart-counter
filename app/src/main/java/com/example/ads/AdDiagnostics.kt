@@ -24,19 +24,19 @@ object AdDiagnostics {
     fun logError(tag: String, adType: String, error: LoadAdError, adUnitId: String) {
         val errorDesc = getErrorDescription(error.code)
         val responseInfoStr = error.responseInfo?.toString() ?: "None"
-        val causeStr = error.cause?.message ?: "None"
+        val causeStr = error.cause?.toString() ?: "None"
 
         val report = buildString {
-            appendLine("==================== ADMOB FAILURE DIAGNOSTIC ====================")
+            appendLine("==================== ADMOB LOAD AD FAILURE ====================")
             appendLine("Ad Format    : $adType")
             appendLine("Ad Unit ID   : $adUnitId")
             appendLine("Test Mode    : ${AdConstants.isTestMode}")
-            appendLine("Error Code   : ${error.code} -> $errorDesc")
-            appendLine("Message      : ${error.message}")
-            appendLine("Domain       : ${error.domain}")
-            appendLine("Cause        : $causeStr")
-            appendLine("ResponseInfo : $responseInfoStr")
-            appendLine("==================================================================")
+            appendLine("error code   : ${error.code} ($errorDesc)")
+            appendLine("error message: ${error.message}")
+            appendLine("domain       : ${error.domain}")
+            appendLine("cause        : $causeStr")
+            appendLine("responseInfo : $responseInfoStr")
+            appendLine("================================================================")
         }
 
         Log.e(tag, report)

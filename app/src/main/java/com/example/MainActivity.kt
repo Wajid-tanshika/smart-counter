@@ -64,7 +64,11 @@ class MainActivity : ComponentActivity() {
                     SplashScreen(onTimeout = {
                         isSplashVisible = false
                         adManager.setSplashCompleted(true)
-                        adManager.showAppOpenAdIfAvailable(this@MainActivity)
+                        window.decorView.post {
+                            if (!this@MainActivity.isFinishing && !this@MainActivity.isDestroyed) {
+                                adManager.showAppOpenAdIfAvailable(this@MainActivity)
+                            }
+                        }
                     })
                 } else if (!isOnboardingDone) {
                     OnboardingScreen(

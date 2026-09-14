@@ -13,7 +13,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -65,13 +68,25 @@ object AdConstants {
         get() = testModeOverride ?: BuildConfig.ADMOB_TEST_MODE
 
     val appOpenAdId: String
-        get() = if (isTestMode) TEST_APP_OPEN_AD_ID else PROD_APP_OPEN_AD_ID
+        get() = when (testModeOverride) {
+            true -> TEST_APP_OPEN_AD_ID
+            false -> PROD_APP_OPEN_AD_ID
+            null -> BuildConfig.ADMOB_APP_OPEN_ID
+        }
 
     val bannerAdId: String
-        get() = if (isTestMode) TEST_BANNER_AD_ID else PROD_BANNER_AD_ID
+        get() = when (testModeOverride) {
+            true -> TEST_BANNER_AD_ID
+            false -> PROD_BANNER_AD_ID
+            null -> BuildConfig.ADMOB_BANNER_ID
+        }
 
     val interstitialAdId: String
-        get() = if (isTestMode) TEST_INTERSTITIAL_AD_ID else PROD_INTERSTITIAL_AD_ID
+        get() = when (testModeOverride) {
+            true -> TEST_INTERSTITIAL_AD_ID
+            false -> PROD_INTERSTITIAL_AD_ID
+            null -> BuildConfig.ADMOB_INTERSTITIAL_ID
+        }
 
     // Minimum interval between interstitials to protect UX
     const val INTERSTITIAL_MIN_INTERVAL_MS = 30_000L
@@ -180,48 +195,56 @@ class AdManager private constructor(private val context: Context) {
     // ==================== APP OPEN ADS ====================
 
     fun loadAppOpenAd() {
-        if (isAppOpenLoading) {
-            Log.d("ADMOB_APP_OPEN", "AppOpen load already in progress, skipping request")
-            return
-        }
-        if (isAppOpenAdAvailable()) {
-            Log.d("ADMOB_APP_OPEN", "AppOpen ad already loaded and valid (age: ${(System.currentTimeMillis() - appOpenLoadedTime) / 1000}s), skipping load")
-            return
-        }
-
-        isAppOpenLoading = true
-        val adUnitId = AdConstants.appOpenAdId
-        Log.d("ADMOB_APP_OPEN", "AppOpen load started: unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
-
-        val request = AdRequest.Builder().build()
-        AppOpenAd.load(
-            context,
-            adUnitId,
-            request,
-            object : AppOpenAd.AppOpenAdLoadCallback() {
-                override fun onAdLoaded(ad: AppOpenAd) {
-                    appOpenAd = ad
-                    isAppOpenLoading = false
-                    appOpenLoadedTime = System.currentTimeMillis()
-                    Log.d("ADMOB_APP_OPEN", "AppOpen loaded: unitId=$adUnitId")
-                }
-
-                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
-                    isAppOpenLoading = false
-                    appOpenAd = null
-                    Log.e("ADMOB_APP_OPEN", "AppOpen failed to load: code=${loadAdError.code}, message=${loadAdError.message}")
-                    AdDiagnostics.logError("ADMOB_APP_OPEN", "App Open", loadAdError, adUnitId)
-
-                    // Safe delayed retry
-                    mainHandler.postDelayed({
-                        if (!isAppOpenAdAvailable() && !isAppOpenLoading) {
-                            Log.d("ADMOB_APP_OPEN", "Retrying AppOpen load after failure...")
-                            loadAppOpenAd()
-                        }
-                    }, 20_000L)
-                }
+        doWhenInitialized {
+            if (isAppOpenLoading) {
+                Log.d("ADMOB_APP_OPEN", "App Open load already in progress, skipping request")
+                return@doWhenInitialized
             }
-        )
+            if (isAppOpenAdAvailable()) {
+                Log.d("ADMOB_APP_OPEN", "App Open ad already loaded and valid (age: ${(System.currentTimeMillis() - appOpenLoadedTime) / 1000}s), skipping load")
+                return@doWhenInitialized
+            }
+
+            isAppOpenLoading = true
+            val adUnitId = AdConstants.appOpenAdId
+            Log.d("ADMOB_APP_OPEN", "App Open load started: unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
+
+            val request = AdRequest.Builder().build()
+            AppOpenAd.load(
+                context,
+                adUnitId,
+                request,
+                object : AppOpenAd.AppOpenAdLoadCallback() {
+                    override fun onAdLoaded(ad: AppOpenAd) {
+                        appOpenAd = ad
+                        isAppOpenLoading = false
+                        appOpenLoadedTime = System.currentTimeMillis()
+                        Log.d("ADMOB_APP_OPEN", "App Open onAdLoaded successfully: unitId=$adUnitId")
+                    }
+
+                    override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                        isAppOpenLoading = false
+                        appOpenAd = null
+                        Log.e(
+                            "ADMOB_APP_OPEN",
+                            "App Open onAdFailedToLoad: error code=${loadAdError.code}, error message=${loadAdError.message}, domain=${loadAdError.domain}, cause=${loadAdError.cause}"
+                        )
+                        loadAdError.responseInfo?.let {
+                            Log.d("ADMOB_APP_OPEN", "App Open responseInfo: $it")
+                        }
+                        AdDiagnostics.logError("ADMOB_APP_OPEN", "App Open", loadAdError, adUnitId)
+
+                        // Safe delayed retry
+                        mainHandler.postDelayed({
+                            if (!isAppOpenAdAvailable() && !isAppOpenLoading) {
+                                Log.d("ADMOB_APP_OPEN", "Retrying App Open load after failure...")
+                                loadAppOpenAd()
+                            }
+                        }, 20_000L)
+                    }
+                }
+            )
+        }
     }
 
     fun isAppOpenAdAvailable(): Boolean {
@@ -284,53 +307,68 @@ class AdManager private constructor(private val context: Context) {
             }
         }
 
-        ad?.show(activity)
+        mainHandler.post {
+            if (!activity.isFinishing && !activity.isDestroyed) {
+                ad?.show(activity)
+            } else {
+                Log.w("ADMOB_APP_OPEN", "Activity finished before AppOpen ad could be shown")
+                onComplete()
+            }
+        }
     }
 
     // ==================== INTERSTITIAL ADS ====================
 
     fun loadInterstitialAd() {
-        if (isInterstitialLoading) {
-            Log.d("ADMOB_INTERSTITIAL", "Interstitial load already in progress, skipping request")
-            return
-        }
-        if (interstitialAd != null) {
-            Log.d("ADMOB_INTERSTITIAL", "Interstitial already loaded and available, skipping request")
-            return
-        }
-
-        isInterstitialLoading = true
-        val adUnitId = AdConstants.interstitialAdId
-        Log.d("ADMOB_INTERSTITIAL", "Interstitial load started: unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
-
-        val request = AdRequest.Builder().build()
-        InterstitialAd.load(
-            context,
-            adUnitId,
-            request,
-            object : InterstitialAdLoadCallback() {
-                override fun onAdLoaded(ad: InterstitialAd) {
-                    interstitialAd = ad
-                    isInterstitialLoading = false
-                    Log.d("ADMOB_INTERSTITIAL", "Interstitial loaded: unitId=$adUnitId")
-                }
-
-                override fun onAdFailedToLoad(loadAdError: LoadAdError) {
-                    isInterstitialLoading = false
-                    interstitialAd = null
-                    Log.e("ADMOB_INTERSTITIAL", "Interstitial failed: code=${loadAdError.code}, message=${loadAdError.message}")
-                    AdDiagnostics.logError("ADMOB_INTERSTITIAL", "Interstitial", loadAdError, adUnitId)
-
-                    // Safe delayed retry
-                    mainHandler.postDelayed({
-                        if (interstitialAd == null && !isInterstitialLoading) {
-                            Log.d("ADMOB_INTERSTITIAL", "Retrying Interstitial load after failure...")
-                            loadInterstitialAd()
-                        }
-                    }, 20_000L)
-                }
+        doWhenInitialized {
+            if (isInterstitialLoading) {
+                Log.d("ADMOB_INTERSTITIAL", "Interstitial load already in progress, skipping request")
+                return@doWhenInitialized
             }
-        )
+            if (interstitialAd != null) {
+                Log.d("ADMOB_INTERSTITIAL", "Interstitial already loaded and available, skipping request")
+                return@doWhenInitialized
+            }
+
+            isInterstitialLoading = true
+            val adUnitId = AdConstants.interstitialAdId
+            Log.d("ADMOB_INTERSTITIAL", "Interstitial load started: unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
+
+            val request = AdRequest.Builder().build()
+            InterstitialAd.load(
+                context,
+                adUnitId,
+                request,
+                object : InterstitialAdLoadCallback() {
+                    override fun onAdLoaded(ad: InterstitialAd) {
+                        interstitialAd = ad
+                        isInterstitialLoading = false
+                        Log.d("ADMOB_INTERSTITIAL", "Interstitial onAdLoaded successfully: unitId=$adUnitId")
+                    }
+
+                    override fun onAdFailedToLoad(loadAdError: LoadAdError) {
+                        isInterstitialLoading = false
+                        interstitialAd = null
+                        Log.e(
+                            "ADMOB_INTERSTITIAL",
+                            "Interstitial onAdFailedToLoad: error code=${loadAdError.code}, error message=${loadAdError.message}, domain=${loadAdError.domain}, cause=${loadAdError.cause}"
+                        )
+                        loadAdError.responseInfo?.let {
+                            Log.d("ADMOB_INTERSTITIAL", "Interstitial responseInfo: $it")
+                        }
+                        AdDiagnostics.logError("ADMOB_INTERSTITIAL", "Interstitial", loadAdError, adUnitId)
+
+                        // Safe delayed retry
+                        mainHandler.postDelayed({
+                            if (interstitialAd == null && !isInterstitialLoading) {
+                                Log.d("ADMOB_INTERSTITIAL", "Retrying Interstitial load after failure...")
+                                loadInterstitialAd()
+                            }
+                        }, 20_000L)
+                    }
+                }
+            )
+        }
     }
 
     fun isInterstitialAdLoaded(): Boolean {
@@ -399,7 +437,14 @@ class AdManager private constructor(private val context: Context) {
             }
         }
 
-        ad.show(activity)
+        mainHandler.post {
+            if (!activity.isFinishing && !activity.isDestroyed) {
+                ad.show(activity)
+            } else {
+                Log.w("ADMOB_INTERSTITIAL", "Activity finished before Interstitial ad could be shown")
+                onDismissed()
+            }
+        }
     }
 
     // ==================== AD INSPECTOR ====================
@@ -443,86 +488,30 @@ fun AdmobBanner(
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
-    // Remember a single AdView instance for this composable so recomposition does not trigger reloads
-    val adView = remember(adUnitId) {
-        AdView(context).apply {
-            setAdSize(AdSize.BANNER)
-            this.adUnitId = adUnitId
-            adListener = object : AdListener() {
-                override fun onAdLoaded() {
-                    super.onAdLoaded()
-                    Log.d("ADMOB_BANNER", "Banner onAdLoaded successfully: unitId=$adUnitId, size=${adSize}")
-                }
+    var adViewRef by remember { mutableStateOf<AdView?>(null) }
 
-                override fun onAdFailedToLoad(error: LoadAdError) {
-                    super.onAdFailedToLoad(error)
-                    Log.e(
-                        "ADMOB_BANNER",
-                        "Banner failed: code=${error.code}, message=${error.message}, domain=${error.domain}, cause=${error.cause}"
-                    )
-                    error.responseInfo?.let {
-                        Log.d("ADMOB_BANNER", "Banner responseInfo: $it")
-                    }
-                    AdDiagnostics.logError("ADMOB_BANNER", "Banner", error, adUnitId)
-                }
-
-                override fun onAdOpened() {
-                    super.onAdOpened()
-                    Log.d("ADMOB_BANNER", "Banner onAdOpened: user clicked ad and full screen overlay opened")
-                }
-
-                override fun onAdClosed() {
-                    super.onAdClosed()
-                    Log.d("ADMOB_BANNER", "Banner onAdClosed: overlay closed, returned to application")
-                }
-
-                override fun onAdClicked() {
-                    super.onAdClicked()
-                    Log.d("ADMOB_BANNER", "Banner onAdClicked: user clicked banner")
-                }
-
-                override fun onAdImpression() {
-                    super.onAdImpression()
-                    Log.d("ADMOB_BANNER", "Banner onAdImpression: impression recorded")
-                }
-            }
-        }
-    }
-
-    DisposableEffect(lifecycleOwner, adView) {
+    DisposableEffect(lifecycleOwner, adViewRef) {
+        val view = adViewRef ?: return@DisposableEffect onDispose {}
         val observer = LifecycleEventObserver { _, event ->
             when (event) {
                 Lifecycle.Event.ON_RESUME -> {
                     Log.d("ADMOB_BANNER", "Banner lifecycle ON_RESUME: resuming adView")
-                    adView.resume()
+                    view.resume()
                 }
                 Lifecycle.Event.ON_PAUSE -> {
                     Log.d("ADMOB_BANNER", "Banner lifecycle ON_PAUSE: pausing adView")
-                    adView.pause()
+                    view.pause()
                 }
                 Lifecycle.Event.ON_DESTROY -> {
                     Log.d("ADMOB_BANNER", "Banner lifecycle ON_DESTROY: destroying adView")
-                    adView.destroy()
+                    view.destroy()
                 }
                 else -> {}
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
-
-        // Load ad safely once MobileAds is initialized
-        AdManager.getInstance(context).doWhenInitialized {
-            try {
-                Log.d("ADMOB_BANNER", "Loading banner with unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
-                adView.loadAd(AdRequest.Builder().build())
-            } catch (e: Exception) {
-                Log.e("ADMOB_BANNER", "Exception while loading banner ad", e)
-            }
-        }
-
         onDispose {
             lifecycleOwner.lifecycle.removeObserver(observer)
-            adView.destroy()
-            Log.d("ADMOB_BANNER", "Banner composable onDispose: adView destroyed")
         }
     }
 
@@ -537,7 +526,72 @@ fun AdmobBanner(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            factory = { adView }
+            factory = { ctx ->
+                AdView(ctx).apply {
+                    setAdSize(AdSize.BANNER)
+                    this.adUnitId = adUnitId
+                    adListener = object : AdListener() {
+                        override fun onAdLoaded() {
+                            super.onAdLoaded()
+                            Log.d(
+                                "ADMOB_BANNER",
+                                "Banner onAdLoaded successfully: unitId=$adUnitId, size=$adSize, width=$width, height=$height"
+                            )
+                        }
+
+                        override fun onAdFailedToLoad(error: LoadAdError) {
+                            super.onAdFailedToLoad(error)
+                            Log.e(
+                                "ADMOB_BANNER",
+                                "Banner onAdFailedToLoad: error code=${error.code}, error message=${error.message}, domain=${error.domain}, cause=${error.cause}"
+                            )
+                            error.responseInfo?.let {
+                                Log.d("ADMOB_BANNER", "Banner responseInfo: $it")
+                            }
+                            AdDiagnostics.logError("ADMOB_BANNER", "Banner", error, adUnitId)
+                        }
+
+                        override fun onAdOpened() {
+                            super.onAdOpened()
+                            Log.d("ADMOB_BANNER", "Banner onAdOpened: user clicked ad and overlay opened")
+                        }
+
+                        override fun onAdClosed() {
+                            super.onAdClosed()
+                            Log.d("ADMOB_BANNER", "Banner onAdClosed: overlay closed, returned to application")
+                        }
+
+                        override fun onAdClicked() {
+                            super.onAdClicked()
+                            Log.d("ADMOB_BANNER", "Banner onAdClicked: user clicked banner")
+                        }
+
+                        override fun onAdImpression() {
+                            super.onAdImpression()
+                            Log.d("ADMOB_BANNER", "Banner onAdImpression: impression recorded")
+                        }
+                    }
+
+                    adViewRef = this
+
+                    // MobileAds initialization strictly verified before loading
+                    AdManager.getInstance(ctx).doWhenInitialized {
+                        try {
+                            Log.d("ADMOB_BANNER", "Banner requesting ad with unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
+                            loadAd(AdRequest.Builder().build())
+                        } catch (e: Exception) {
+                            Log.e("ADMOB_BANNER", "Exception while loading banner ad", e)
+                        }
+                    }
+                }
+            },
+            onRelease = { view ->
+                Log.d("ADMOB_BANNER", "Banner onRelease: destroying adView")
+                view.destroy()
+                if (adViewRef == view) {
+                    adViewRef = null
+                }
+            }
         )
     }
 }

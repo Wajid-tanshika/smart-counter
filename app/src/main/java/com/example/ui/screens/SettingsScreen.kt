@@ -327,23 +327,25 @@ fun SettingsScreen(
                 Spacer(modifier = Modifier.height(12.dp))
 
                 // Development & Testing AdMob Diagnostics
-                if (com.example.ads.AdConstants.isTestMode) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
-                        ),
-                        shape = RoundedCornerShape(16.dp)
+                var isTestModeActive by remember { mutableStateOf(com.example.ads.AdConstants.isTestMode) }
+
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f)
+                    ),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
+                            Column {
                                 Text(
                                     text = "AdMob Diagnostics & Testing",
                                     fontSize = 15.sp,
@@ -351,73 +353,95 @@ fun SettingsScreen(
                                     color = MaterialTheme.colorScheme.onSecondaryContainer
                                 )
                                 Text(
-                                    text = if (com.example.ads.AdConstants.isTestMode) "TEST MODE" else "PROD MODE",
+                                    text = if (isTestModeActive) "Using Google Official Test IDs" else "Using Production AdMob IDs",
                                     fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier
-                                        .background(
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                                            RoundedCornerShape(6.dp)
-                                        )
-                                        .padding(horizontal = 6.dp, vertical = 2.dp)
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
                                 )
                             }
-
                             Text(
-                                text = "Using official Google test ad unit IDs. Safe for development & live test clicks.",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.8f)
+                                text = if (isTestModeActive) "TEST MODE" else "PROD MODE",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isTestModeActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error,
+                                modifier = Modifier
+                                    .background(
+                                        (if (isTestModeActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error).copy(alpha = 0.15f),
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .padding(horizontal = 6.dp, vertical = 2.dp)
                             )
+                        }
 
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        // Toggle for switching to official test IDs directly on phone
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Force Google Test Ads",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
+                            Switch(
+                                checked = isTestModeActive,
+                                onCheckedChange = { checked ->
+                                    com.example.ads.AdConstants.testModeOverride = checked
+                                    isTestModeActive = checked
+                                    com.example.ads.AdManager.getInstance(context).loadAppOpenAd()
+                                    com.example.ads.AdManager.getInstance(context).loadInterstitialAd()
+                                }
+                            )
+                        }
+
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Button(
+                                onClick = {
+                                    val act = context as? Activity
+                                    if (act != null) {
+                                        com.example.ads.AdManager.getInstance(context).openAdInspector(act)
+                                    }
+                                },
+                                modifier = Modifier.weight(1f)
                             ) {
-                                Button(
-                                    onClick = {
-                                        val act = context as? Activity
-                                        if (act != null) {
-                                            com.example.ads.AdManager.getInstance(context).openAdInspector(act)
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("Ad Inspector", fontSize = 12.sp)
-                                }
-
-                                Button(
-                                    onClick = {
-                                        val act = context as? Activity
-                                        if (act != null) {
-                                            com.example.ads.AdManager.getInstance(context).showInterstitialIfAllowed(act, forceShow = true)
-                                        }
-                                    },
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text("Test Interstitial", fontSize = 12.sp)
-                                }
+                                Text("Ad Inspector", fontSize = 12.sp)
                             }
 
                             Button(
                                 onClick = {
                                     val act = context as? Activity
                                     if (act != null) {
-                                        com.example.ads.AdManager.getInstance(context).showAppOpenAdIfAvailable(act)
+                                        com.example.ads.AdManager.getInstance(context).showInterstitialIfAllowed(act, forceShow = true)
                                     }
                                 },
-                                modifier = Modifier.fillMaxWidth(),
-                                colors = ButtonDefaults.buttonColors(
-                                    containerColor = MaterialTheme.colorScheme.tertiary
-                                )
+                                modifier = Modifier.weight(1f)
                             ) {
-                                Text("Test App Open Ad", fontSize = 12.sp)
+                                Text("Test Interstitial", fontSize = 12.sp)
                             }
                         }
-                    }
 
-                    Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = {
+                                val act = context as? Activity
+                                if (act != null) {
+                                    com.example.ads.AdManager.getInstance(context).showAppOpenAdIfAvailable(act)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.tertiary
+                            )
+                        ) {
+                            Text("Test App Open Ad", fontSize = 12.sp)
+                        }
+                    }
                 }
+
+                Spacer(modifier = Modifier.height(12.dp))
             }
 
             // Responsible AdMob Banner at bottom

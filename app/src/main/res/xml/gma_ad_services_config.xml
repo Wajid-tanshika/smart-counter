@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ad-services-config>
+    <!-- Topics API only. Attribution is omitted to prevent MeasurementService binding failure (ServiceUnavailableException) on emulators and devices without Android Privacy Sandbox Measurement Service. -->
+    <topics allowAllToAccess="true" />
+</ad-services-config>

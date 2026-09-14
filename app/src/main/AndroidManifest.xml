@@ -9,6 +9,11 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Prevent measurement service binding failure (ServiceUnavailableException) on emulators/devices without Privacy Sandbox -->
+    <uses-permission
+        android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION"
+        tools:node="remove" />
+
     <queries>
         <intent>
             <action android:name="android.speech.RecognitionService" />
@@ -33,15 +38,14 @@
         android:label="@string/app_name"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
-        android:hardwareAccelerated="true"
         android:theme="@style/Theme.MyApplication">
 
-        <!-- Explicit configuration for Google Mobile Ads AdActivity with hardware acceleration -->
+        <!-- Explicit configuration for Google Mobile Ads AdActivity with hardwareAccelerated=false to prevent Mesa DRM rendernode probing errors in containerized/emulator environments -->
         <activity
             android:name="com.google.android.gms.ads.AdActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenLayout|uiMode|screenSize|smallestScreenSize"
             android:exported="false"
-            android:hardwareAccelerated="true"
+            android:hardwareAccelerated="false"
             android:theme="@android:style/Theme.Translucent"
             tools:replace="android:theme" />
 

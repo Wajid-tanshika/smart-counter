@@ -101,7 +101,7 @@ fun MainAppContent(
     BackHandler(enabled = activeSubScreen != CounterSubScreen.NONE || currentTab != MainNavigationTab.HOME) {
         if (activeSubScreen != CounterSubScreen.NONE) {
             viewModel.closeSubScreen()
-            adManager.showInterstitialIfAllowed(activity)
+            adManager.showInterstitial(activity)
         } else if (currentTab != MainNavigationTab.HOME) {
             viewModel.selectTab(MainNavigationTab.HOME)
         }
@@ -114,7 +114,7 @@ fun MainAppContent(
                     viewModel = viewModel,
                     onNavigateBack = {
                         viewModel.closeSubScreen()
-                        adManager.showInterstitialIfAllowed(activity)
+                        adManager.showInterstitial(activity)
                     },
                     onOpenVoiceCounter = {
                         viewModel.openSubScreen(CounterSubScreen.VOICE_COUNTER)

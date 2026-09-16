@@ -95,7 +95,11 @@ object AdConstants {
         get() = when (testModeOverride) {
             true -> TEST_INTERSTITIAL_AD_ID
             false -> PROD_INTERSTITIAL_AD_ID
-            null -> BuildConfig.ADMOB_INTERSTITIAL_ID
+            null -> if (BuildConfig.ADMOB_TEST_MODE || BuildConfig.DEBUG) {
+                TEST_INTERSTITIAL_AD_ID
+            } else {
+                BuildConfig.ADMOB_INTERSTITIAL_ID.ifBlank { PROD_INTERSTITIAL_AD_ID }
+            }
         }
 
     // Minimum interval between interstitials to protect UX
@@ -362,7 +366,7 @@ class AdManager private constructor(private val context: Context) {
                         interstitialAd = null
                         Log.e(
                             "ADMOB_INTERSTITIAL",
-                            "Interstitial onAdFailedToLoad: error.code=${loadAdError.code}, error.message=${loadAdError.message}, error.domain=${loadAdError.domain}, error.cause=${loadAdError.cause}, responseInfo=${loadAdError.responseInfo}"
+                            "Interstitial onAdFailedToLoad: errorCode=${loadAdError.code}, message=${loadAdError.message}, domain=${loadAdError.domain}, cause=${loadAdError.cause}, responseInfo=${loadAdError.responseInfo}"
                         )
                         AdDiagnostics.logError("ADMOB_INTERSTITIAL", "Interstitial", loadAdError, adUnitId)
 
@@ -372,7 +376,7 @@ class AdManager private constructor(private val context: Context) {
                                 Log.d("ADMOB_INTERSTITIAL", "Retrying Interstitial load after failure...")
                                 loadInterstitialAd()
                             }
-                        }, 20_000L)
+                        }, 15_000L)
                     }
                 }
             )
@@ -383,30 +387,26 @@ class AdManager private constructor(private val context: Context) {
         return interstitialAd != null
     }
 
-    fun showInterstitialIfAllowed(
+    fun showInterstitial(
         activity: Activity?,
-        forceShow: Boolean = false,
         onDismissed: () -> Unit = {}
     ) {
-        Log.d("ADMOB_INTERSTITIAL", "Interstitial show requested (forceShow=$forceShow)")
+        Log.d("ADMOB_INTERSTITIAL", "showInterstitial called (activity=$activity)")
 
+        // Check for null or finishing Activity to avoid crashes
         if (activity == null || activity.isFinishing || activity.isDestroyed) {
             Log.w("ADMOB_INTERSTITIAL", "Interstitial failed to show: Activity is null, finishing, or destroyed")
             onDismissed()
             return
         }
 
-        val now = System.currentTimeMillis()
-        val elapsed = now - lastInterstitialShownTime
-        if (!forceShow && elapsed < AdConstants.INTERSTITIAL_MIN_INTERVAL_MS) {
-            Log.d("ADMOB_INTERSTITIAL", "Interstitial throttled: ${elapsed / 1000}s elapsed since last ad (min interval ${AdConstants.INTERSTITIAL_MIN_INTERVAL_MS / 1000}s)")
-            onDismissed()
-            return
-        }
-
+        // Ensure the same Interstitial instance cannot be shown more than once
         val ad = interstitialAd
+        interstitialAd = null
+
+        // If ad is not loaded, do not crash and do not block the user's action
         if (ad == null) {
-            Log.w("ADMOB_INTERSTITIAL", "Interstitial failed to show: ad is null (not loaded yet). Preloading...")
+            Log.w("ADMOB_INTERSTITIAL", "Interstitial ad is null (not loaded yet). Preloading and continuing without blocking user.")
             loadInterstitialAd()
             onDismissed()
             return
@@ -415,23 +415,24 @@ class AdManager private constructor(private val context: Context) {
         ad.fullScreenContentCallback = object : FullScreenContentCallback() {
             override fun onAdShowedFullScreenContent() {
                 isShowingFullScreenAd = true
-                lastInterstitialShownTime = System.currentTimeMillis()
                 Log.d("ADMOB_INTERSTITIAL", "Interstitial shown: displayed to user")
             }
 
             override fun onAdDismissedFullScreenContent() {
                 isShowingFullScreenAd = false
-                interstitialAd = null
-                lastInterstitialShownTime = System.currentTimeMillis()
-                Log.d("ADMOB_INTERSTITIAL", "Interstitial dismissed: preloading next interstitial")
+                Log.d("ADMOB_INTERSTITIAL", "Interstitial dismissed: immediately preloading next interstitial")
+                // Immediately preload the next Interstitial
                 loadInterstitialAd()
                 onDismissed()
             }
 
             override fun onAdFailedToShowFullScreenContent(adError: AdError) {
                 isShowingFullScreenAd = false
-                interstitialAd = null
-                Log.e("ADMOB_INTERSTITIAL", "Interstitial failed to show: code=${adError.code}, message=${adError.message}, domain=${adError.domain}")
+                Log.e(
+                    "ADMOB_INTERSTITIAL",
+                    "Interstitial failed to show: code=${adError.code}, message=${adError.message}, domain=${adError.domain}"
+                )
+                // Preload next interstitial on failure
                 loadInterstitialAd()
                 onDismissed()
             }
@@ -445,14 +446,15 @@ class AdManager private constructor(private val context: Context) {
             }
         }
 
-        mainHandler.post {
-            if (!activity.isFinishing && !activity.isDestroyed) {
-                ad.show(activity)
-            } else {
-                Log.w("ADMOB_INTERSTITIAL", "Activity finished before Interstitial ad could be shown")
-                onDismissed()
-            }
-        }
+        ad.show(activity)
+    }
+
+    fun showInterstitialIfAllowed(
+        activity: Activity?,
+        forceShow: Boolean = false,
+        onDismissed: () -> Unit = {}
+    ) {
+        showInterstitial(activity, onDismissed)
     }
 
     // ==================== AD INSPECTOR ====================

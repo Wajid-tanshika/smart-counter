@@ -8,6 +8,14 @@ import com.example.ads.AdManager
 
 class SmartCounterApp : Application(), Application.ActivityLifecycleCallbacks {
 
+    init {
+        try {
+            android.system.Os.setenv("MESA_LOG_FILE", "/dev/null", true)
+            android.system.Os.setenv("MESA_DEBUG", "silent", true)
+        } catch (ignored: Throwable) {
+        }
+    }
+
     private var currentActivity: Activity? = null
     private var isAppInForeground = false
     private var startedActivityCount = 0

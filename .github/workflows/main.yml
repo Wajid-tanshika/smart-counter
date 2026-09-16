@@ -1,4 +1,4 @@
-name: Build Release APK & AAB
+name: Build Debug APK + Release APK & AAB
 
 on:
   push:
@@ -25,10 +25,23 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # -----------------------------
+      # Build Debug APK
+      # -----------------------------
+      - name: Build Debug APK
+        run: |
+          gradle assembleDebug
+
+      # -----------------------------
+      # Decode release keystore
+      # -----------------------------
       - name: Decode release keystore
         run: |
           echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > my-upload-key.jks
 
+      # -----------------------------
+      # Build Release APK + AAB
+      # -----------------------------
       - name: Build Release APK & AAB
         env:
           KEYSTORE_PATH: ${{ github.workspace }}/my-upload-key.jks
@@ -37,19 +50,27 @@ jobs:
         run: |
           gradle assembleRelease bundleRelease
 
-      - name: Upload APK & AAB artifacts
+      # -----------------------------
+      # Upload all artifacts
+      # -----------------------------
+      - name: Upload Debug APK + Release APK & AAB
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-files
+          name: smart-counter-build-files
           path: |
+            app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/bundle/release/app-release.aab
 
-      - name: Create GitHub Release with APK & AAB
+      # -----------------------------
+      # Create GitHub Release
+      # -----------------------------
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: build-${{ github.run_number }}
           files: |
+            app/build/outputs/apk/debug/app-debug.apk
             app/build/outputs/apk/release/app-release.apk
             app/build/outputs/bundle/release/app-release.aab
         env:

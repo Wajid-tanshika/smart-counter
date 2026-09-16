@@ -3,26 +3,10 @@ package com.example
 import android.app.Activity
 import android.app.Application
 import android.os.Bundle
-import android.system.Os
 import android.util.Log
 import com.example.ads.AdManager
 
 class SmartCounterApp : Application(), Application.ActivityLifecycleCallbacks {
-
-    companion object {
-        init {
-            try {
-                // Suppress Mesa DRI / Gallium render node search and debug log output
-                // in virtualized/containerized emulator environments lacking /dev/dri render nodes
-                Os.setenv("MESA_LOG_FILE", "/dev/null", true)
-                Os.setenv("MESA_DEBUG", "silent", true)
-                Os.setenv("LIBGL_DEBUG", "quiet", true)
-                Os.setenv("EGL_LOG_LEVEL", "fatal", true)
-            } catch (t: Throwable) {
-                Log.w("SmartCounterApp", "Unable to set graphics environment flags", t)
-            }
-        }
-    }
 
     private var currentActivity: Activity? = null
     private var isAppInForeground = false

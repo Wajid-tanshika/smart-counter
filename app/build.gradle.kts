@@ -18,6 +18,7 @@ android {
     versionName = "2.0.0"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+    manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
   }
 
   signingConfigs {
@@ -39,14 +40,18 @@ android {
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
+      manifestPlaceholders["admobAppId"] = "ca-app-pub-1859648502281028~7809732470"
       buildConfigField("Boolean", "ADMOB_TEST_MODE", "false")
+      buildConfigField("String", "ADMOB_APP_ID", "\"ca-app-pub-1859648502281028~7809732470\"")
       buildConfigField("String", "ADMOB_APP_OPEN_ID", "\"ca-app-pub-1859648502281028/2338291242\"")
       buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-1859648502281028/8764134185\"")
       buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"ca-app-pub-1859648502281028/8413579150\"")
     }
     debug {
       signingConfig = signingConfigs.getByName("debug")
+      manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
       buildConfigField("Boolean", "ADMOB_TEST_MODE", "true")
+      buildConfigField("String", "ADMOB_APP_ID", "\"ca-app-pub-3940256099942544~3347511713\"")
       buildConfigField("String", "ADMOB_APP_OPEN_ID", "\"ca-app-pub-3940256099942544/9257395921\"")
       buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-3940256099942544/9214589741\"")
       buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"ca-app-pub-3940256099942544/1033173712\"")

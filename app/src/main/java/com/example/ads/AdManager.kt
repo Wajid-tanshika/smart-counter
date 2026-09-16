@@ -5,8 +5,10 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
+import android.view.ViewGroup
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -57,6 +59,7 @@ object AdConstants {
     const val INTERSTITIAL_AD_ID = PROD_INTERSTITIAL_AD_ID
 
     // Official Google Android Test Ad Unit IDs
+    const val TEST_APP_ID = "ca-app-pub-3940256099942544~3347511713"
     const val TEST_APP_OPEN_AD_ID = "ca-app-pub-3940256099942544/9257395921"
     const val TEST_BANNER_AD_ID = "ca-app-pub-3940256099942544/9214589741"
     const val TEST_INTERSTITIAL_AD_ID = "ca-app-pub-3940256099942544/1033173712"
@@ -66,6 +69,13 @@ object AdConstants {
 
     val isTestMode: Boolean
         get() = testModeOverride ?: BuildConfig.ADMOB_TEST_MODE
+
+    val appId: String
+        get() = when (testModeOverride) {
+            true -> TEST_APP_ID
+            false -> PROD_APP_ID
+            null -> BuildConfig.ADMOB_APP_ID
+        }
 
     val appOpenAdId: String
         get() = when (testModeOverride) {
@@ -133,22 +143,26 @@ class AdManager private constructor(private val context: Context) {
             return
         }
 
-        Log.d(TAG, "MobileAds initialization started (testMode=${AdConstants.isTestMode})")
+        Log.d(TAG, "MobileAds initialization started: testMode=${AdConstants.isTestMode}")
+        Log.d(TAG, "Active App ID: ${AdConstants.appId}")
         Log.d(TAG, "Active App Open ID: ${AdConstants.appOpenAdId}")
         Log.d(TAG, "Active Banner ID: ${AdConstants.bannerAdId}")
         Log.d(TAG, "Active Interstitial ID: ${AdConstants.interstitialAdId}")
 
         try {
-            // Configure test request configuration if needed
+            // Configure test request configuration with emulator device ID in test mode
             val reqConfigBuilder = RequestConfiguration.Builder()
+            if (AdConstants.isTestMode) {
+                reqConfigBuilder.setTestDeviceIds(listOf(AdRequest.DEVICE_ID_EMULATOR))
+            }
             MobileAds.setRequestConfiguration(reqConfigBuilder.build())
 
             MobileAds.initialize(context) { initializationStatus ->
                 isInitialized.set(true)
-                Log.d(TAG, "MobileAds initialization completed")
+                Log.d(TAG, "MobileAds initialization completed successfully")
                 val statusMap = initializationStatus.adapterStatusMap
                 for ((adapterClass, status) in statusMap) {
-                    Log.d(TAG, "Adapter: $adapterClass -> state=${status.initializationState}, description=${status.description}, latency=${status.latency}ms")
+                    Log.d(TAG, "MobileAds adapter: $adapterClass -> state=${status.initializationState}, description=${status.description}, latency=${status.latency}ms")
                 }
 
                 // Run any queued callbacks waiting for initialization
@@ -207,7 +221,7 @@ class AdManager private constructor(private val context: Context) {
 
             isAppOpenLoading = true
             val adUnitId = AdConstants.appOpenAdId
-            Log.d("ADMOB_APP_OPEN", "App Open load started: unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
+            Log.d("ADMOB_APP_OPEN", "App Open ad request started: unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
 
             val request = AdRequest.Builder().build()
             AppOpenAd.load(
@@ -219,7 +233,7 @@ class AdManager private constructor(private val context: Context) {
                         appOpenAd = ad
                         isAppOpenLoading = false
                         appOpenLoadedTime = System.currentTimeMillis()
-                        Log.d("ADMOB_APP_OPEN", "App Open onAdLoaded successfully: unitId=$adUnitId")
+                        Log.d("ADMOB_APP_OPEN", "App Open onAdLoaded successfully: unitId=$adUnitId, responseInfo=${ad.responseInfo}")
                     }
 
                     override fun onAdFailedToLoad(loadAdError: LoadAdError) {
@@ -227,11 +241,8 @@ class AdManager private constructor(private val context: Context) {
                         appOpenAd = null
                         Log.e(
                             "ADMOB_APP_OPEN",
-                            "App Open onAdFailedToLoad: error code=${loadAdError.code}, error message=${loadAdError.message}, domain=${loadAdError.domain}, cause=${loadAdError.cause}"
+                            "App Open onAdFailedToLoad: error.code=${loadAdError.code}, error.message=${loadAdError.message}, error.domain=${loadAdError.domain}, error.cause=${loadAdError.cause}, responseInfo=${loadAdError.responseInfo}"
                         )
-                        loadAdError.responseInfo?.let {
-                            Log.d("ADMOB_APP_OPEN", "App Open responseInfo: $it")
-                        }
                         AdDiagnostics.logError("ADMOB_APP_OPEN", "App Open", loadAdError, adUnitId)
 
                         // Safe delayed retry
@@ -332,7 +343,7 @@ class AdManager private constructor(private val context: Context) {
 
             isInterstitialLoading = true
             val adUnitId = AdConstants.interstitialAdId
-            Log.d("ADMOB_INTERSTITIAL", "Interstitial load started: unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
+            Log.d("ADMOB_INTERSTITIAL", "Interstitial ad request started: unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
 
             val request = AdRequest.Builder().build()
             InterstitialAd.load(
@@ -343,7 +354,7 @@ class AdManager private constructor(private val context: Context) {
                     override fun onAdLoaded(ad: InterstitialAd) {
                         interstitialAd = ad
                         isInterstitialLoading = false
-                        Log.d("ADMOB_INTERSTITIAL", "Interstitial onAdLoaded successfully: unitId=$adUnitId")
+                        Log.d("ADMOB_INTERSTITIAL", "Interstitial onAdLoaded successfully: unitId=$adUnitId, responseInfo=${ad.responseInfo}")
                     }
 
                     override fun onAdFailedToLoad(loadAdError: LoadAdError) {
@@ -351,11 +362,8 @@ class AdManager private constructor(private val context: Context) {
                         interstitialAd = null
                         Log.e(
                             "ADMOB_INTERSTITIAL",
-                            "Interstitial onAdFailedToLoad: error code=${loadAdError.code}, error message=${loadAdError.message}, domain=${loadAdError.domain}, cause=${loadAdError.cause}"
+                            "Interstitial onAdFailedToLoad: error.code=${loadAdError.code}, error.message=${loadAdError.message}, error.domain=${loadAdError.domain}, error.cause=${loadAdError.cause}, responseInfo=${loadAdError.responseInfo}"
                         )
-                        loadAdError.responseInfo?.let {
-                            Log.d("ADMOB_INTERSTITIAL", "Interstitial responseInfo: $it")
-                        }
                         AdDiagnostics.logError("ADMOB_INTERSTITIAL", "Interstitial", loadAdError, adUnitId)
 
                         // Safe delayed retry
@@ -518,8 +526,7 @@ fun AdmobBanner(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(50.dp)
-            .padding(vertical = 2.dp),
+            .defaultMinSize(minHeight = 50.dp),
         contentAlignment = Alignment.Center
     ) {
         AndroidView(
@@ -528,6 +535,10 @@ fun AdmobBanner(
                 .height(50.dp),
             factory = { ctx ->
                 AdView(ctx).apply {
+                    layoutParams = ViewGroup.LayoutParams(
+                        ViewGroup.LayoutParams.MATCH_PARENT,
+                        ViewGroup.LayoutParams.WRAP_CONTENT
+                    )
                     setAdSize(AdSize.BANNER)
                     this.adUnitId = adUnitId
                     adListener = object : AdListener() {
@@ -535,7 +546,7 @@ fun AdmobBanner(
                             super.onAdLoaded()
                             Log.d(
                                 "ADMOB_BANNER",
-                                "Banner onAdLoaded successfully: unitId=$adUnitId, size=$adSize, width=$width, height=$height"
+                                "Banner onAdLoaded successfully: unitId=$adUnitId, size=$adSize, width=$width, height=$height, responseInfo=${responseInfo}"
                             )
                         }
 
@@ -543,11 +554,8 @@ fun AdmobBanner(
                             super.onAdFailedToLoad(error)
                             Log.e(
                                 "ADMOB_BANNER",
-                                "Banner onAdFailedToLoad: error code=${error.code}, error message=${error.message}, domain=${error.domain}, cause=${error.cause}"
+                                "Banner onAdFailedToLoad: error.code=${error.code}, error.message=${error.message}, error.domain=${error.domain}, error.cause=${error.cause}, responseInfo=${error.responseInfo}"
                             )
-                            error.responseInfo?.let {
-                                Log.d("ADMOB_BANNER", "Banner responseInfo: $it")
-                            }
                             AdDiagnostics.logError("ADMOB_BANNER", "Banner", error, adUnitId)
                         }
 
@@ -577,7 +585,7 @@ fun AdmobBanner(
                     // MobileAds initialization strictly verified before loading
                     AdManager.getInstance(ctx).doWhenInitialized {
                         try {
-                            Log.d("ADMOB_BANNER", "Banner requesting ad with unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
+                            Log.d("ADMOB_BANNER", "Banner ad request started: unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
                             loadAd(AdRequest.Builder().build())
                         } catch (e: Exception) {
                             Log.e("ADMOB_BANNER", "Exception while loading banner ad", e)

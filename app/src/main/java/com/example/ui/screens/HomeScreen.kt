@@ -79,13 +79,18 @@ fun HomeScreen(
     val recentActivities by viewModel.recentHistory.collectAsStateWithLifecycle()
     val allSessions by viewModel.allSessions.collectAsStateWithLifecycle()
 
-    LazyColumn(
+    Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background),
-        contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp)
+            .background(MaterialTheme.colorScheme.background)
     ) {
+        LazyColumn(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 16.dp, bottom = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
         // App Header
         item {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -402,12 +407,10 @@ fun HomeScreen(
                 ActivityItemRow(activity = activity)
             }
         }
+    }
 
-        // Responsible AdMob Banner placement at bottom
-        item {
-            Spacer(modifier = Modifier.height(6.dp))
-            AdmobBanner(modifier = Modifier.fillMaxWidth())
-        }
+    // Responsible AdMob Banner fixed at bottom above navigation bar
+    AdmobBanner(modifier = Modifier.fillMaxWidth())
     }
 }
 

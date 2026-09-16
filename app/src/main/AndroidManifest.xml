@@ -55,7 +55,7 @@
         <!-- Google AdMob App ID -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-1859648502281028~7809732470" />
+            android:value="${admobAppId}" />
 
         <!-- Disable Firebase Analytics auto-collection warning when google-services is not used -->
         <meta-data

@@ -34,18 +34,32 @@ android {
     }
   }
 
+  // Set to true to test the RELEASE build with Google's official AdMob test ad units.
+  // Set to false for live production ads from your AdMob account.
+  // Can also be toggled via Gradle property: -PuseTestAdsInRelease=false
+  val useTestAdsInRelease = providers.gradleProperty("useTestAdsInRelease")
+    .map { it.toBoolean() }
+    .orElse(providers.environmentVariable("USE_TEST_ADS").map { it.toBoolean() })
+    .getOrElse(true)
+
+  val releaseAppId = if (useTestAdsInRelease) "ca-app-pub-3940256099942544~3347511713" else "ca-app-pub-1859648502281028~7809732470"
+  val releaseAppOpenId = if (useTestAdsInRelease) "ca-app-pub-3940256099942544/9257395921" else "ca-app-pub-1859648502281028/2338291242"
+  val releaseBannerId = if (useTestAdsInRelease) "ca-app-pub-3940256099942544/9214589741" else "ca-app-pub-1859648502281028/8764134185"
+  val releaseInterstitialId = if (useTestAdsInRelease) "ca-app-pub-3940256099942544/1033173712" else "ca-app-pub-1859648502281028/8413579150"
+  val releaseTestMode = useTestAdsInRelease
+
   buildTypes {
     release {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
       signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
-      manifestPlaceholders["admobAppId"] = "ca-app-pub-1859648502281028~7809732470"
-      buildConfigField("Boolean", "ADMOB_TEST_MODE", "false")
-      buildConfigField("String", "ADMOB_APP_ID", "\"ca-app-pub-1859648502281028~7809732470\"")
-      buildConfigField("String", "ADMOB_APP_OPEN_ID", "\"ca-app-pub-1859648502281028/2338291242\"")
-      buildConfigField("String", "ADMOB_BANNER_ID", "\"ca-app-pub-1859648502281028/8764134185\"")
-      buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"ca-app-pub-1859648502281028/8413579150\"")
+      manifestPlaceholders["admobAppId"] = releaseAppId
+      buildConfigField("Boolean", "ADMOB_TEST_MODE", "$releaseTestMode")
+      buildConfigField("String", "ADMOB_APP_ID", "\"$releaseAppId\"")
+      buildConfigField("String", "ADMOB_APP_OPEN_ID", "\"$releaseAppOpenId\"")
+      buildConfigField("String", "ADMOB_BANNER_ID", "\"$releaseBannerId\"")
+      buildConfigField("String", "ADMOB_INTERSTITIAL_ID", "\"$releaseInterstitialId\"")
     }
     debug {
       signingConfig = signingConfigs.getByName("debug")

@@ -23,4 +23,9 @@
 # Google Mobile Ads SDK rules
 -keep class com.google.android.gms.ads.** { *; }
 -keep interface com.google.android.gms.ads.** { *; }
+-keep class com.google.ads.mediation.** { *; }
+-keep interface com.google.ads.mediation.** { *; }
+-keep class com.google.android.gms.internal.ads.** { *; }
+-dontwarn com.google.android.gms.ads.**
+-dontwarn com.google.ads.mediation.**
 

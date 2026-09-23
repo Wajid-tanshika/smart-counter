@@ -40,7 +40,7 @@ android {
   val useTestAdsInRelease = providers.gradleProperty("useTestAdsInRelease")
     .map { it.toBoolean() }
     .orElse(providers.environmentVariable("USE_TEST_ADS").map { it.toBoolean() })
-    .getOrElse(true)
+    .getOrElse(false)
 
   val releaseAppId = if (useTestAdsInRelease) "ca-app-pub-3940256099942544~3347511713" else "ca-app-pub-1859648502281028~7809732470"
   val releaseAppOpenId = if (useTestAdsInRelease) "ca-app-pub-3940256099942544/9257395921" else "ca-app-pub-1859648502281028/2338291242"

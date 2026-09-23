@@ -30,7 +30,6 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.example.BuildConfig
 import com.google.android.gms.ads.AdError
 import com.google.android.gms.ads.AdListener
 import com.google.android.gms.ads.AdRequest
@@ -46,59 +45,35 @@ import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
 import java.util.concurrent.atomic.AtomicBoolean
 
 object AdConstants {
-    // 100% Real Live Production AdMob IDs (from AdMob Console)
-    const val PROD_APP_ID = "ca-app-pub-1859648502281028~7809732470"
-    const val PROD_APP_OPEN_AD_ID = "ca-app-pub-1859648502281028/2338291242"
-    const val PROD_BANNER_AD_ID = "ca-app-pub-1859648502281028/8764134185"
-    const val PROD_INTERSTITIAL_AD_ID = "ca-app-pub-1859648502281028/8413579150"
+    // REAL LIVE PRODUCTION ADMOB IDs
+    const val APP_ID =
+        "ca-app-pub-1859648502281028~7809732470"
 
-    // Backward-compatibility constants preserving exact original references
-    const val APP_ID = PROD_APP_ID
-    const val APP_OPEN_AD_ID = PROD_APP_OPEN_AD_ID
-    const val BANNER_AD_ID = PROD_BANNER_AD_ID
-    const val INTERSTITIAL_AD_ID = PROD_INTERSTITIAL_AD_ID
+    const val APP_OPEN_AD_ID =
+        "ca-app-pub-1859648502281028/3997929505"
 
-    // Official Google Android Test Ad Unit IDs
-    const val TEST_APP_ID = "ca-app-pub-3940256099942544~3347511713"
-    const val TEST_APP_OPEN_AD_ID = "ca-app-pub-3940256099942544/9257395921"
-    const val TEST_BANNER_AD_ID = "ca-app-pub-3940256099942544/9214589741"
-    const val TEST_INTERSTITIAL_AD_ID = "ca-app-pub-3940256099942544/1033173712"
+    const val BANNER_AD_ID =
+        "ca-app-pub-1859648502281028/6432521251"
 
-    // Optional runtime override for testing/diagnostics
-    var testModeOverride: Boolean? = null
+    const val INTERSTITIAL_AD_ID =
+        "ca-app-pub-1859648502281028/2435285123"
 
-    val isTestMode: Boolean
-        get() = testModeOverride ?: BuildConfig.ADMOB_TEST_MODE
+    // Production-only configuration
+    const val isTestMode = false
 
     val appId: String
-        get() = when (testModeOverride) {
-            true -> TEST_APP_ID
-            false -> PROD_APP_ID
-            null -> BuildConfig.ADMOB_APP_ID.ifBlank { if (isTestMode) TEST_APP_ID else PROD_APP_ID }
-        }
+        get() = APP_ID
 
     val appOpenAdId: String
-        get() = when (testModeOverride) {
-            true -> TEST_APP_OPEN_AD_ID
-            false -> PROD_APP_OPEN_AD_ID
-            null -> BuildConfig.ADMOB_APP_OPEN_ID.ifBlank { if (isTestMode) TEST_APP_OPEN_AD_ID else PROD_APP_OPEN_AD_ID }
-        }
+        get() = APP_OPEN_AD_ID
 
     val bannerAdId: String
-        get() = when (testModeOverride) {
-            true -> TEST_BANNER_AD_ID
-            false -> PROD_BANNER_AD_ID
-            null -> BuildConfig.ADMOB_BANNER_ID.ifBlank { if (isTestMode) TEST_BANNER_AD_ID else PROD_BANNER_AD_ID }
-        }
+        get() = BANNER_AD_ID
 
     val interstitialAdId: String
-        get() = when (testModeOverride) {
-            true -> TEST_INTERSTITIAL_AD_ID
-            false -> PROD_INTERSTITIAL_AD_ID
-            null -> BuildConfig.ADMOB_INTERSTITIAL_ID.ifBlank { if (isTestMode) TEST_INTERSTITIAL_AD_ID else PROD_INTERSTITIAL_AD_ID }
-        }
+        get() = INTERSTITIAL_AD_ID
 
-    // Minimum interval between interstitials to protect UX
+    // Minimum interval between interstitials
     const val INTERSTITIAL_MIN_INTERVAL_MS = 30_000L
 }
 

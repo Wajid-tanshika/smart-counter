@@ -14,6 +14,9 @@ class SmartCounterApp : Application(), Application.ActivityLifecycleCallbacks {
             android.system.Os.setenv("MESA_DEBUG", "silent", true)
             android.system.Os.setenv("LIBGL_ALWAYS_SOFTWARE", "1", true)
             android.system.Os.setenv("GALLIUM_DRIVER", "llvmpipe", true)
+            android.system.Os.setenv("MESA_LOADER_DRIVER_OVERRIDE", "swrast", true)
+            android.system.Os.setenv("LIBGL_DRI3_DISABLE", "1", true)
+            android.system.Os.setenv("LIBGL_DRI2_DISABLE", "1", true)
         } catch (ignored: Throwable) {
         }
     }

@@ -9,6 +9,11 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
 
+    <!-- Prevent measurement service binding failure (ServiceUnavailableException) on emulators/devices without Privacy Sandbox -->
+    <uses-permission
+        android:name="android.permission.ACCESS_ADSERVICES_ATTRIBUTION"
+        tools:node="remove" />
+
     <queries>
         <intent>
             <action android:name="android.speech.RecognitionService" />

@@ -14,8 +14,8 @@ android {
     applicationId = "com.smartcounter.ai"
     minSdk = 24
     targetSdk = 36
-    versionCode = 11
-    versionName = "2.0.1"
+    versionCode = 12
+    versionName = "2.0.2"
 
     testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     manifestPlaceholders["admobAppId"] = "ca-app-pub-3940256099942544~3347511713"
@@ -51,7 +51,8 @@ android {
   buildTypes {
     release {
       isCrunchPngs = false
-      isMinifyEnabled = false
+      isMinifyEnabled = true
+      isShrinkResources = true
       ndk {
         debugSymbolLevel = "FULL"
       }

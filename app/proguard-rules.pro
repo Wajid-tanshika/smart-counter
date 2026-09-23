@@ -29,3 +29,27 @@
 -dontwarn com.google.android.gms.ads.**
 -dontwarn com.google.ads.mediation.**
 
+# Room Database
+-keep class * extends androidx.room.RoomDatabase
+-keep @androidx.room.Entity class *
+-dontwarn androidx.room.paging.**
+
+# Moshi & Retrofit
+-keep class com.squareup.moshi.** { *; }
+-keep class retrofit2.** { *; }
+-dontwarn retrofit2.**
+-dontwarn okhttp3.**
+-dontwarn okio.**
+
+# ML Kit Barcode Scanning
+-keep class com.google.mlkit.** { *; }
+-dontwarn com.google.mlkit.**
+
+# App Data Models & State
+-keep class com.example.data.** { *; }
+-keep class com.example.model.** { *; }
+-keep class com.example.ads.** { *; }
+
+# Attributes to preserve
+-keepattributes *Annotation*,Signature,InnerClasses,EnclosingMethod,SourceFile,LineNumberTable
+

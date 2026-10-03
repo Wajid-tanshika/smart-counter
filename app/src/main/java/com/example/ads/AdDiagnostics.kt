@@ -39,6 +39,6 @@ object AdDiagnostics {
             appendLine("================================================================")
         }
 
-        Log.e(tag, report)
+        Log.w(tag, report)
     }
 }

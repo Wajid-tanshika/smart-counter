@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
+import androidx.compose.material.icons.automirrored.filled.MenuBook
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -73,9 +75,9 @@ fun getGoalIcon(iconName: String): ImageVector {
     return when (iconName.lowercase()) {
         "water" -> Icons.Default.WaterDrop
         "fitness" -> Icons.Default.FitnessCenter
-        "book" -> Icons.Default.MenuBook
+        "book" -> Icons.AutoMirrored.Filled.MenuBook
         "prayer" -> Icons.Default.SelfImprovement
-        "walk" -> Icons.Default.DirectionsWalk
+        "walk" -> Icons.AutoMirrored.Filled.DirectionsWalk
         "study" -> Icons.Default.School
         "star" -> Icons.Default.Star
         "flame" -> Icons.Default.LocalFireDepartment
@@ -1061,8 +1063,8 @@ fun GoalEditorDialog(
         "fitness" to Icons.Default.FitnessCenter,
         "study" to Icons.Default.School,
         "prayer" to Icons.Default.SelfImprovement,
-        "book" to Icons.Default.MenuBook,
-        "walk" to Icons.Default.DirectionsWalk,
+        "book" to Icons.AutoMirrored.Filled.MenuBook,
+        "walk" to Icons.AutoMirrored.Filled.DirectionsWalk,
         "meditate" to Icons.Default.Spa,
         "code" to Icons.Default.Code,
         "flame" to Icons.Default.LocalFireDepartment,

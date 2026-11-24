@@ -78,6 +78,8 @@ fun SettingsScreen(
     val isVibeOn by settings.isVibrationEnabled.collectAsStateWithLifecycle()
     val autoSaveScans by settings.autoSaveScans.collectAsStateWithLifecycle()
     val lowStockAlerts by settings.lowStockAlerts.collectAsStateWithLifecycle()
+    val diagnosticsEnabled by settings.isAdDiagnosticsEnabled.collectAsStateWithLifecycle()
+
 
     var showClearHistoryDialog by remember { mutableStateOf(false) }
     var showClearInventoryDialog by remember { mutableStateOf(false) }
@@ -103,6 +105,23 @@ fun SettingsScreen(
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
+
+                // Ad Diagnostics Section
+                SettingsGroupHeader(title = "Ad Diagnostics")
+                Card(
+                    shape = RoundedCornerShape(16.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        SettingsSwitchRow(
+                            icon = Icons.Default.Info,
+                            title = "Ad Diagnostics",
+                            subtitle = "Turns ON whenever the app starts",
+                            checked = diagnosticsEnabled,
+                            onCheckedChange = { settings.setAdDiagnosticsEnabled(it) }
+                        )
+                    }
+                }
 
                 // 1. Appearance Section
                 SettingsGroupHeader(title = "Appearance")

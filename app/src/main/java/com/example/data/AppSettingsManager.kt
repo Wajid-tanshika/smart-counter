@@ -37,6 +37,11 @@ class AppSettingsManager(context: Context) {
     private val _lowStockAlerts = MutableStateFlow(prefs.getBoolean("low_stock_alerts", true))
     val lowStockAlerts: StateFlow<Boolean> = _lowStockAlerts.asStateFlow()
 
+    // Ad Diagnostics is enabled again whenever the app process starts.
+    private val _isAdDiagnosticsEnabled = MutableStateFlow(true)
+    val isAdDiagnosticsEnabled: StateFlow<Boolean> = _isAdDiagnosticsEnabled.asStateFlow()
+
+
     private val _isOnboardingCompleted = MutableStateFlow(prefs.getBoolean("onboarding_done", false))
     val isOnboardingCompleted: StateFlow<Boolean> = _isOnboardingCompleted.asStateFlow()
 
@@ -78,6 +83,10 @@ class AppSettingsManager(context: Context) {
     fun setAutoSaveScans(enabled: Boolean) {
         prefs.edit().putBoolean("auto_save_scans", enabled).apply()
         _autoSaveScans.value = enabled
+    }
+
+    fun setAdDiagnosticsEnabled(enabled: Boolean) {
+        _isAdDiagnosticsEnabled.value = enabled
     }
 
     fun setLowStockAlerts(enabled: Boolean) {

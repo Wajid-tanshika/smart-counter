@@ -103,6 +103,8 @@ class AdManager private constructor(private val context: Context) {
     }
 
     private fun init() {
+        AdDiagnostics.initialize(context)
+        AdDiagnostics.logEvent("SDK", "MobileAds initialization started. Test mode=${AdConstants.isTestMode}; App ID=${AdConstants.appId}")
         if (!isInitializing.compareAndSet(false, true)) {
             Log.d(TAG, "AdMob initialization already in progress or completed")
             return
@@ -127,9 +129,11 @@ class AdManager private constructor(private val context: Context) {
                 isInitialized.set(true)
                 Log.i("ADMOB_RELEASE_INIT", "MobileAds initialized: testMode=${AdConstants.isTestMode}, appId=${AdConstants.appId}, adapterCount=${initializationStatus.adapterStatusMap.size}")
                 Log.d(TAG, "MobileAds initialization completed successfully")
+                AdDiagnostics.logEvent("SDK", "MobileAds initialization completed successfully. Adapter count=${initializationStatus.adapterStatusMap.size}")
                 val statusMap = initializationStatus.adapterStatusMap
                 for ((adapterClass, status) in statusMap) {
                     Log.d(TAG, "MobileAds adapter: $adapterClass -> state=${status.initializationState}, description=${status.description}, latency=${status.latency}ms")
+                    AdDiagnostics.logEvent("ADAPTER", "$adapterClass: state=${status.initializationState}; description=${status.description}; latency=${status.latency}ms")
                 }
 
                 // Run all callbacks and ad preloads safely on the Main UI thread
@@ -157,6 +161,7 @@ class AdManager private constructor(private val context: Context) {
             isInitializing.set(false)
             Log.e(TAG, "Failed to initialize MobileAds SDK; retrying in 15 seconds", e)
             Log.e("ADMOB_RELEASE_INIT", "Exception initializing MobileAds SDK", e)
+            AdDiagnostics.logEvent("SDK FAILURE", "Initialization exception: ${e.message}")
             mainHandler.postDelayed({ init() }, 15_000L)
         }
     }
@@ -222,6 +227,7 @@ class AdManager private constructor(private val context: Context) {
                         isAppOpenLoading = false
                         appOpenLoadedTime = System.currentTimeMillis()
                         Log.i("ADMOB_APP_OPEN_LOAD_SUCCESS", "App Open onAdLoaded successfully: unitId=$adUnitId, responseInfo=${ad.responseInfo}")
+                        AdDiagnostics.logEvent("APP OPEN", "Ad loaded successfully. Unit=$adUnitId; response=${ad.responseInfo}")
                         Log.d("ADMOB_APP_OPEN", "App Open onAdLoaded successfully: unitId=$adUnitId")
                     }
 
@@ -354,6 +360,7 @@ class AdManager private constructor(private val context: Context) {
                         interstitialAd = ad
                         isInterstitialLoading = false
                         Log.i("ADMOB_INTERSTITIAL_LOAD_SUCCESS", "Interstitial onAdLoaded successfully: unitId=$adUnitId, responseInfo=${ad.responseInfo}")
+                        AdDiagnostics.logEvent("INTERSTITIAL", "Ad loaded successfully. Unit=$adUnitId; response=${ad.responseInfo}")
                         Log.d("ADMOB_INTERSTITIAL", "Interstitial onAdLoaded successfully: unitId=$adUnitId")
                     }
 
@@ -546,6 +553,7 @@ fun AdmobBanner(
                     adListener = object : AdListener() {
                         override fun onAdLoaded() {
                             super.onAdLoaded()
+                            AdDiagnostics.logEvent("BANNER", "Ad loaded successfully. Unit=$adUnitId; size=$adSize; response=$responseInfo")
                             Log.i(
                                 "ADMOB_BANNER_LOAD_SUCCESS",
                                 "Banner onAdLoaded successfully: unitId=$adUnitId, size=$adSize, width=$width, height=$height, responseInfo=${responseInfo}"
@@ -596,6 +604,7 @@ fun AdmobBanner(
                     AdManager.getInstance(ctx).doWhenInitialized {
                         try {
                             Log.d("ADMOB_BANNER", "Banner ad request started: unitId=$adUnitId (testMode=${AdConstants.isTestMode})")
+                            AdDiagnostics.logEvent("BANNER", "Ad request started. Unit=$adUnitId; testMode=${AdConstants.isTestMode}")
                             loadAd(AdRequest.Builder().build())
                         } catch (e: Exception) {
                             Log.e("ADMOB_BANNER", "Exception while loading banner ad", e)

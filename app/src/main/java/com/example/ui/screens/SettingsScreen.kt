@@ -60,6 +60,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.example.ads.AdmobBanner
+import com.example.ads.AdDiagnostics
 import com.example.data.AppThemeMode
 import com.example.ui.SmartCounterViewModel
 import com.example.R
@@ -79,10 +80,12 @@ fun SettingsScreen(
     val autoSaveScans by settings.autoSaveScans.collectAsStateWithLifecycle()
     val lowStockAlerts by settings.lowStockAlerts.collectAsStateWithLifecycle()
     val diagnosticsEnabled by settings.isAdDiagnosticsEnabled.collectAsStateWithLifecycle()
+    val diagnosticEvents by AdDiagnostics.events.collectAsStateWithLifecycle()
 
 
     var showClearHistoryDialog by remember { mutableStateOf(false) }
     var showClearInventoryDialog by remember { mutableStateOf(false) }
+    var showAdDiagnosticsDialog by remember { mutableStateOf(false) }
 
     Scaffold { innerPadding ->
         Column(
@@ -118,7 +121,16 @@ fun SettingsScreen(
                             title = "Ad Diagnostics",
                             subtitle = "Turns ON whenever the app starts",
                             checked = diagnosticsEnabled,
-                            onCheckedChange = { settings.setAdDiagnosticsEnabled(it) }
+                            onCheckedChange = {
+                                settings.setAdDiagnosticsEnabled(it)
+                                AdDiagnostics.setEnabled(it)
+                            }
+                        )
+                        SettingsClickableRow(
+                            icon = Icons.Default.Info,
+                            title = "View AdMob Report",
+                            subtitle = "See saved SDK, adapter and ad loading results",
+                            onClick = { showAdDiagnosticsDialog = true }
                         )
                     }
                 }
@@ -399,6 +411,36 @@ fun SettingsScreen(
             }
         )
     }
+    if (showAdDiagnosticsDialog) {
+        AlertDialog(
+            onDismissRequest = { showAdDiagnosticsDialog = false },
+            title = { Text("AdMob Diagnostics Report") },
+            text = {
+                Column(
+                    modifier = Modifier
+                        .height(360.dp)
+                        .verticalScroll(rememberScrollState())
+                ) {
+                    Text(
+                        text = diagnosticEvents.asReversed().joinToString("\n\n")
+                            .ifBlank { "No diagnostic events recorded yet. Keep Diagnostics ON and use the app to collect results." },
+                        fontSize = 12.sp
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showAdDiagnosticsDialog = false }) {
+                    Text("Close")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { AdDiagnostics.clearEvents() }) {
+                    Text("Clear Report")
+                }
+            }
+        )
+    }
+
 }
 
 @Composable

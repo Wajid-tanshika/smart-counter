@@ -1,7 +1,10 @@
 package com.example.ui.screens
 
+import android.app.Activity
 import android.content.Context
+import android.content.ContextWrapper
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -59,6 +62,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.ads.AdManager
 import com.example.ads.AdmobBanner
 import com.example.ads.AdDiagnostics
 import com.example.data.AppThemeMode
@@ -131,6 +135,24 @@ fun SettingsScreen(
                             title = "View AdMob Report",
                             subtitle = "See saved SDK, adapter and ad loading results",
                             onClick = { showAdDiagnosticsDialog = true }
+                        )
+
+                        SettingsClickableRow(
+                            icon = Icons.Default.Info,
+                            title = "Open Ad Inspector",
+                            subtitle = "Open Google Mobile Ads testing tools",
+                            onClick = {
+                                val activity = findActivity(context)
+                                if (activity != null) {
+                                    AdManager.getInstance(context).openAdInspector(activity) { error ->
+                                        if (error != null) {
+                                            Toast.makeText(context, error, Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                } else {
+                                    Toast.makeText(context, "Activity context unavailable", Toast.LENGTH_LONG).show()
+                                }
+                            }
                         )
                     }
                 }
@@ -529,4 +551,16 @@ fun SettingsClickableRow(
             modifier = Modifier.size(18.dp)
         )
     }
+}
+
+
+private fun findActivity(context: Context): Activity? {
+    var current = context
+    while (current is ContextWrapper) {
+        if (current is Activity) return current
+        val next = current.baseContext
+        if (next === current) break
+        current = next
+    }
+    return current as? Activity
 }

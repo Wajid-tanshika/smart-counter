@@ -86,7 +86,7 @@ android {
             buildConfigField(
                 "String",
                 "ADMOB_APP_OPEN_ID",
-                "\"ca-app-pub-1859648502281028/3979929605\""
+                "\"ca-app-pub-1859648502281028/3997929605\""
             )
 
             buildConfigField(

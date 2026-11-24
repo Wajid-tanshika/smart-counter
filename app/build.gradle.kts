@@ -18,8 +18,8 @@ android {
         applicationId = "com.smartcounter.ai"
         minSdk = 24
         targetSdk = 36
-        versionCode = 12
-        versionName = "2.0.2"
+        versionCode = 13
+        versionName = "2.0.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
 
@@ -86,7 +86,7 @@ android {
             buildConfigField(
                 "String",
                 "ADMOB_APP_OPEN_ID",
-                "\"ca-app-pub-1859648502281028/3997929505\""
+                "\"ca-app-pub-1859648502281028/3979929605\""
             )
 
             buildConfigField(
@@ -109,11 +109,11 @@ android {
             manifestPlaceholders["admobAppId"] =
                 "ca-app-pub-1859648502281028~7809732470"
 
-            // REAL PRODUCTION ADMOB CONFIGURATION
+            // Google test ad units are used only in debug builds.
             buildConfigField(
                 "Boolean",
                 "ADMOB_TEST_MODE",
-                "false"
+                "true"
             )
 
             buildConfigField(
@@ -125,19 +125,19 @@ android {
             buildConfigField(
                 "String",
                 "ADMOB_APP_OPEN_ID",
-                "\"ca-app-pub-1859648502281028/3997929505\""
+                "\"ca-app-pub-3940256099942544/9257395921\""
             )
 
             buildConfigField(
                 "String",
                 "ADMOB_BANNER_ID",
-                "\"ca-app-pub-1859648502281028/6432521251\""
+                "\"ca-app-pub-3940256099942544/9214589741\""
             )
 
             buildConfigField(
                 "String",
                 "ADMOB_INTERSTITIAL_ID",
-                "\"ca-app-pub-1859648502281028/2435285123\""
+                "\"ca-app-pub-3940256099942544/1033173712\""
             )
         }
     }

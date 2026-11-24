@@ -42,36 +42,26 @@ import com.google.android.gms.ads.RequestConfiguration
 import com.google.android.gms.ads.appopen.AppOpenAd
 import com.google.android.gms.ads.interstitial.InterstitialAd
 import com.google.android.gms.ads.interstitial.InterstitialAdLoadCallback
+import com.example.BuildConfig
 import java.util.concurrent.atomic.AtomicBoolean
 
 object AdConstants {
-    // REAL LIVE PRODUCTION ADMOB IDs
-    const val APP_ID =
-        "ca-app-pub-1859648502281028~7809732470"
-
-    const val APP_OPEN_AD_ID =
-        "ca-app-pub-1859648502281028/3997929505"
-
-    const val BANNER_AD_ID =
-        "ca-app-pub-1859648502281028/6432521251"
-
-    const val INTERSTITIAL_AD_ID =
-        "ca-app-pub-1859648502281028/2435285123"
-
-    // Production-only configuration
-    const val isTestMode = false
-
+    // Build-type-specific values are defined in app/build.gradle.kts:
+    // debug uses Google's official test ad units; release uses the live units.
     val appId: String
-        get() = APP_ID
+        get() = BuildConfig.ADMOB_APP_ID
 
     val appOpenAdId: String
-        get() = APP_OPEN_AD_ID
+        get() = BuildConfig.ADMOB_APP_OPEN_ID
 
     val bannerAdId: String
-        get() = BANNER_AD_ID
+        get() = BuildConfig.ADMOB_BANNER_ID
 
     val interstitialAdId: String
-        get() = INTERSTITIAL_AD_ID
+        get() = BuildConfig.ADMOB_INTERSTITIAL_ID
+
+    val isTestMode: Boolean
+        get() = BuildConfig.ADMOB_TEST_MODE
 
     // Minimum interval between interstitials
     const val INTERSTITIAL_MIN_INTERVAL_MS = 30_000L
@@ -149,7 +139,13 @@ class AdManager private constructor(private val context: Context) {
                         callbacksToRun = ArrayList(initCallbacks)
                         initCallbacks.clear()
                     }
-                    callbacksToRun.forEach { it.invoke() }
+                    callbacksToRun.forEach { callback ->
+                        try {
+                            callback.invoke()
+                        } catch (e: Exception) {
+                            Log.e(TAG, "An AdMob initialization callback failed", e)
+                        }
+                    }
 
                     // Preload primary full-screen formats
                     loadAppOpenAd()
@@ -157,8 +153,11 @@ class AdManager private constructor(private val context: Context) {
                 }
             }
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to initialize MobileAds SDK", e)
+            // Do not leave the manager permanently marked as initializing.
+            isInitializing.set(false)
+            Log.e(TAG, "Failed to initialize MobileAds SDK; retrying in 15 seconds", e)
             Log.e("ADMOB_RELEASE_INIT", "Exception initializing MobileAds SDK", e)
+            mainHandler.postDelayed({ init() }, 15_000L)
         }
     }
 
